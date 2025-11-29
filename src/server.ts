@@ -5,11 +5,13 @@ import { URL } from 'url';
 import {
   BoardService,
   Column,
-  InMemoryBoardRepository
+  FileBoardRepository
 } from './board';
 import { SSEHub } from './sseHub';
 
-const repository = new InMemoryBoardRepository();
+const dataFile =
+  process.env.BOARD_DATA_FILE || join(process.cwd(), 'data', 'board.json');
+const repository = new FileBoardRepository(dataFile);
 const hub = new SSEHub();
 const boardService = new BoardService(repository, {
   notifyBoardUpdated: (_actor, cards) => {

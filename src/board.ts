@@ -1,3 +1,6 @@
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
+
 export type Column = 'Todo' | 'In Progress' | 'Done' | 'Waste';
 
 export type Card = {
@@ -10,6 +13,26 @@ export type Card = {
 export interface BoardRepository {
   load(): Card[];
   save(cards: Card[]): void;
+}
+
+export class FileBoardRepository implements BoardRepository {
+  constructor(private readonly filePath: string) {}
+
+  load(): Card[] {
+    try {
+      const raw = readFileSync(this.filePath, 'utf-8');
+      const data = JSON.parse(raw);
+      return Array.isArray(data) ? (data as Card[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  save(cards: Card[]): void {
+    const dir = dirname(this.filePath);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(this.filePath, JSON.stringify(cards, null, 2), 'utf-8');
+  }
 }
 
 export interface BoardNotifier {

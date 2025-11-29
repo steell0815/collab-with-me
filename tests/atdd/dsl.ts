@@ -1,24 +1,31 @@
 import { expect, test } from 'vitest';
+import { mkdtempSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import {
   BoardService,
   BoardNotifier,
   Column,
-  InMemoryBoardRepository,
+  FileBoardRepository,
   SWIMLANES
 } from '../../src/board';
 
 type TestContext = {
   currentUser?: string;
   authenticatedUsers: Set<string>;
-  repository: InMemoryBoardRepository;
+  repository: FileBoardRepository;
   service: BoardService;
   notifications: Map<string, number>;
+  dataFile: string;
+  notifier: BoardNotifier;
 };
 
 let context: TestContext | null = null;
 
 const createContext = (): TestContext => {
-  const repository = new InMemoryBoardRepository();
+  const tempDir = mkdtempSync(join(tmpdir(), 'board-'));
+  const dataFile = join(tempDir, 'board.json');
+  const repository = new FileBoardRepository(dataFile);
   const notifications = new Map<string, number>();
   const authenticatedUsers = new Set<string>();
 
@@ -34,7 +41,14 @@ const createContext = (): TestContext => {
   };
 
   const service = new BoardService(repository, notifier);
-  return { repository, service, notifications, authenticatedUsers };
+  return {
+    repository,
+    service,
+    notifications,
+    authenticatedUsers,
+    dataFile,
+    notifier
+  };
 };
 
 export const scenario = (name: string, fn: () => void) =>
@@ -76,6 +90,12 @@ export const when = {
       throw new Error(`User ${actor} not authenticated`);
     }
     ctx.service.moveCard(actor, title, column);
+  },
+  systemRestarts: () => {
+    const ctx = ensureContext();
+    const repository = new FileBoardRepository(ctx.dataFile);
+    ctx.repository = repository;
+    ctx.service = new BoardService(repository, ctx.notifier);
   },
   userDeletesCard: (title: string, userId?: string) => {
     const ctx = ensureContext();
