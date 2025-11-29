@@ -22,30 +22,35 @@ const boardService = new BoardService(repository, {
   }
 });
 
-const staticDir =
-  process.env.STATIC_DIR && existsSync(process.env.STATIC_DIR)
-    ? process.env.STATIC_DIR
-    : existsSync(join(process.cwd(), 'dist'))
-      ? join(process.cwd(), 'dist')
-      : join(process.cwd(), 'public');
+const staticCandidates = [
+  process.env.STATIC_DIR,
+  join(process.cwd(), 'dist'),
+  join(process.cwd(), 'public')
+].filter((p): p is string => !!p);
 
-const serveFile = (path: string, res: any) => {
-  if (!existsSync(path)) {
-    res.writeHead(404);
-    res.end('Not found');
-    return;
+const staticDirs = staticCandidates.filter((p) => existsSync(p));
+
+const serveFile = (relativePath: string, res: any): boolean => {
+  for (const root of staticDirs) {
+    const abs = join(root, relativePath);
+    if (existsSync(abs)) {
+      const ext = extname(abs);
+      const contentType =
+        ext === '.html'
+          ? 'text/html'
+          : ext === '.js'
+            ? 'text/javascript'
+            : ext === '.css'
+              ? 'text/css'
+              : ext === '.svg'
+                ? 'image/svg+xml'
+                : 'application/octet-stream';
+      res.writeHead(200, { 'Content-Type': contentType });
+      createReadStream(abs).pipe(res);
+      return true;
+    }
   }
-  const ext = extname(path);
-  const contentType =
-    ext === '.html'
-      ? 'text/html'
-      : ext === '.js'
-        ? 'text/javascript'
-        : ext === '.css'
-          ? 'text/css'
-          : 'application/octet-stream';
-  res.writeHead(200, { 'Content-Type': contentType });
-  createReadStream(path).pipe(res);
+  return false;
 };
 
 const parseBody = async (req: any) =>
@@ -175,18 +180,37 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-      serveFile(join(staticDir, 'index.html'), res);
+      if (!serveFile('index.html', res)) {
+        res.writeHead(404);
+        res.end('Not found');
+      }
       return;
     }
 
-    const staticPath = join(staticDir, url.pathname);
-    if (req.method === 'GET' && staticPath.startsWith(staticDir)) {
-      serveFile(staticPath, res);
-      return;
+    if (req.method === 'GET') {
+      const pathname = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+      if (serveFile(pathname, res)) {
+        return;
+      }
     }
 
-    res.writeHead(404);
-    res.end('Not found');
+    if (req.method === 'GET' && url.pathname === '/favicon.svg') {
+      if (serveFile('favicon.svg', res)) {
+        return;
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/logo-smarter.svg') {
+      if (serveFile('logo-smarter.svg', res)) {
+        return;
+      }
+    }
+
+    if (req.method === 'GET') {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
   } catch (err) {
     console.error(err);
     res.writeHead(500);
