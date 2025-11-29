@@ -7,7 +7,9 @@
     "dev": "tsx src/server.ts",
     "start": "npm run dev",
     "test": "vitest run",
-    "test:watch": "vitest watch"
+    "test:watch": "vitest watch",
+    "compute:version": "bash ./scripts/compute-version.sh",
+    "build:ci": "npm run build && node ./scripts/inject-version.js"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

@@ -146,3 +146,9 @@ fetchCards().catch((err) => {
 });
 
 connectEvents();
+
+const versionEl = document.querySelector('#version');
+const appVersion = import.meta.env?.APP_VERSION || window.APP_VERSION || '0.0.0-local';
+if (versionEl) {
+  versionEl.textContent = `Version: ${appVersion}`;
+}
