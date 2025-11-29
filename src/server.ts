@@ -12,10 +12,10 @@ import { SSEHub } from './sseHub';
 const repository = new InMemoryBoardRepository();
 const hub = new SSEHub();
 const boardService = new BoardService(repository, {
-  notifyCardChanged: (_actor, _card) => {
+  notifyBoardUpdated: (_actor, cards) => {
     hub.broadcast({
       type: 'cardChanged',
-      cards: repository.load()
+      cards
     });
   }
 });
@@ -72,7 +72,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/events') {
-      hub.subscribe(req, res);
+      hub.subscribe(req, res, {
+        type: 'cardChanged',
+        cards: repository.load()
+      });
       return;
     }
 
@@ -126,6 +129,31 @@ const server = createServer(async (req, res) => {
         const card = boardService.moveCard(user, title, column);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
+    if (req.method === 'DELETE' && url.pathname === '/api/cards') {
+      const body = await parseBody(req);
+      const title = body.title;
+      const user = body.user;
+      if (typeof title !== 'string') {
+        res.writeHead(400);
+        res.end('Title required');
+        return;
+      }
+      if (typeof user !== 'string' || user.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        boardService.deleteCard(user, title);
+        res.writeHead(204);
+        res.end();
       } catch (err: any) {
         res.writeHead(404);
         res.end(err?.message || 'Card not found');

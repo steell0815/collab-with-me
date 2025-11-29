@@ -13,7 +13,11 @@ export class SSEHub {
   private clients = new Map<number, Client>();
   private nextId = 1;
 
-  subscribe(req: IncomingMessage, res: ServerResponse): void {
+  subscribe(
+    req: IncomingMessage,
+    res: ServerResponse,
+    initialMessage?: SSEMessage
+  ): void {
     const id = this.nextId++;
     this.clients.set(id, { id, res });
 
@@ -24,6 +28,9 @@ export class SSEHub {
       'X-Accel-Buffering': 'no'
     });
     res.write(`: connected ${id}\n\n`);
+    if (initialMessage) {
+      res.write(`data: ${JSON.stringify(initialMessage)}\n\n`);
+    }
 
     const cleanup = () => this.unsubscribe(id);
     req.on('close', cleanup);

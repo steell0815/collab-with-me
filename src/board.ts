@@ -13,11 +13,11 @@ export interface BoardRepository {
 }
 
 export interface BoardNotifier {
-  notifyCardChanged(actorId: string, card: Card): void;
+  notifyBoardUpdated(actorId: string, cards: Card[]): void;
 }
 
 export class NoopBoardNotifier implements BoardNotifier {
-  notifyCardChanged(): void {
+  notifyBoardUpdated(): void {
     // no-op
   }
 }
@@ -53,7 +53,7 @@ export class BoardService {
     };
     cards.push(card);
     this.repository.save(cards);
-    this.notifier.notifyCardChanged(userId, card);
+    this.notifier.notifyBoardUpdated(userId, cards);
     return card;
   }
 
@@ -69,8 +69,21 @@ export class BoardService {
     const updated = { ...card, column: newColumn };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
     this.repository.save(updatedCards);
-    this.notifier.notifyCardChanged(userId, updated);
+    this.notifier.notifyBoardUpdated(userId, updatedCards);
     return updated;
+  }
+
+  deleteCard(userId: string, title: string): void {
+    if (!userId) {
+      throw new Error('User must be authenticated to delete a card');
+    }
+    const cards = this.repository.load();
+    const next = cards.filter((c) => c.title !== title);
+    if (next.length === cards.length) {
+      throw new Error(`Card with title '${title}' not found`);
+    }
+    this.repository.save(next);
+    this.notifier.notifyBoardUpdated(userId, next);
   }
 
   listCards(): Card[] {

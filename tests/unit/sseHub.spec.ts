@@ -24,7 +24,8 @@ describe('SSEHub', () => {
           return this;
         }
       } as unknown as IncomingMessage,
-      res
+      res,
+      { type: 'cardChanged', cards: [] }
     );
     hub.broadcast({ type: 'cardChanged', cards: [{ id: 1 }] });
     await new Promise((resolve) => setTimeout(resolve, 0));

@@ -85,6 +85,28 @@ cardsEl.addEventListener('click', async (event) => {
       setStatus(err.message || 'Error moving card', true);
     }
   }
+  if (target.matches('button[data-delete]')) {
+    const cardTitle = target.getAttribute('data-title');
+    const user = userEl.value.trim();
+    if (!cardTitle || !user) {
+      setStatus('User required to delete cards', true);
+      return;
+    }
+    try {
+      const res = await fetch('/api/cards', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, title: cardTitle })
+      });
+      if (!res.ok && res.status !== 204) {
+        throw new Error(await res.text());
+      }
+      setStatus(`Deleted "${cardTitle}"`);
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error deleting card', true);
+    }
+  }
 });
 
 const renderCards = (cards) => {
@@ -109,6 +131,7 @@ const renderCards = (cards) => {
                 `<button data-move="${col}" data-title="${card.title}">Move to ${col}</button>`
             )
             .join('')}
+          <button data-delete="true" data-title="${card.title}">Delete</button>
         </div>
       `;
       laneDiv.appendChild(div);

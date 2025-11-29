@@ -12,3 +12,12 @@ scenario("Card status change notifies other users' boards", () => {
   then.boardShowsCard('Draft spec', 'In Progress', 'bob');
   then.swimlaneShowsCard('Draft spec', 'In Progress', 'bob');
 });
+
+scenario('Card deletion notifies other users', () => {
+  given.userIsAuthenticated('alice');
+  given.userIsAuthenticated('bob');
+  given.cardExists({ title: 'Remove me', column: 'Done' });
+  when.userDeletesCard('Remove me', 'alice');
+  then.boardIsNotied('bob');
+  then.boardDoesNotShowCard('Remove me');
+});

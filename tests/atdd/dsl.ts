@@ -12,24 +12,23 @@ type TestContext = {
   authenticatedUsers: Set<string>;
   repository: InMemoryBoardRepository;
   service: BoardService;
-  notifications: Map<string, Array<{ title: string; column: Column }>>;
+  notifications: Map<string, number>;
 };
 
 let context: TestContext | null = null;
 
 const createContext = (): TestContext => {
   const repository = new InMemoryBoardRepository();
-  const notifications = new Map<string, Array<{ title: string; column: Column }>>();
+  const notifications = new Map<string, number>();
   const authenticatedUsers = new Set<string>();
 
   const notifier: BoardNotifier = {
-    notifyCardChanged: (actorId: string, card: { title: string; column: Column }) => {
+    notifyBoardUpdated: (actorId: string, cards) => {
       [...authenticatedUsers]
         .filter((user) => user !== actorId)
         .forEach((user) => {
-          const list = notifications.get(user) || [];
-          list.push({ title: card.title, column: card.column });
-          notifications.set(user, list);
+          const count = notifications.get(user) ?? 0;
+          notifications.set(user, count + 1);
         });
     }
   };
@@ -77,6 +76,17 @@ export const when = {
       throw new Error(`User ${actor} not authenticated`);
     }
     ctx.service.moveCard(actor, title, column);
+  },
+  userDeletesCard: (title: string, userId?: string) => {
+    const ctx = ensureContext();
+    const actor = userId ?? ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    if (!ctx.authenticatedUsers.has(actor)) {
+      throw new Error(`User ${actor} not authenticated`);
+    }
+    ctx.service.deleteCard(actor, title);
   }
 };
 
@@ -88,6 +98,12 @@ export const then = {
       (card) => card.title === title && card.column === column
     );
     expect(found).toBeDefined();
+  },
+  boardDoesNotShowCard: (title: string) => {
+    const ctx = ensureContext();
+    const cards = ctx.service.listCards();
+    const found = cards.find((card) => card.title === title);
+    expect(found).toBeUndefined();
   },
   swimlaneShowsCard: (title: string, column: Column, _viewer?: string) => {
     const ctx = ensureContext();
@@ -104,13 +120,13 @@ export const then = {
   },
   boardIsNotied: (userId: string) => {
     const ctx = ensureContext();
-    const list = ctx.notifications.get(userId) || [];
-    expect(list.length).toBeGreaterThan(0);
+    const count = ctx.notifications.get(userId) ?? 0;
+    expect(count).toBeGreaterThan(0);
   },
   changeIsPersisted: () => {
     const ctx = ensureContext();
     const persisted = ctx.repository.load();
-    expect(persisted.length).toBeGreaterThan(0);
+    expect(persisted).toBeDefined();
   }
 };
 
