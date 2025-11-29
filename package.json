@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "tsx": "^4.7.0"
+  },
   "scripts": {
     "dev": "tsx src/server.ts",
     "start": "npm run dev",
@@ -13,7 +16,6 @@
     "build:ci": "npm run build && node ./scripts/inject-version.js"
   },
   "devDependencies": {
-    "tsx": "^4.7.0",
     "typescript": "^5.4.5",
     "vitest": "^1.6.1"
   }

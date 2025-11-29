@@ -22,7 +22,12 @@ const boardService = new BoardService(repository, {
   }
 });
 
-const publicDir = join(process.cwd(), 'public');
+const staticDir =
+  process.env.STATIC_DIR && existsSync(process.env.STATIC_DIR)
+    ? process.env.STATIC_DIR
+    : existsSync(join(process.cwd(), 'dist'))
+      ? join(process.cwd(), 'dist')
+      : join(process.cwd(), 'public');
 
 const serveFile = (path: string, res: any) => {
   if (!existsSync(path)) {
@@ -170,12 +175,12 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-      serveFile(join(publicDir, 'index.html'), res);
+      serveFile(join(staticDir, 'index.html'), res);
       return;
     }
 
-    const staticPath = join(publicDir, url.pathname);
-    if (req.method === 'GET' && staticPath.startsWith(publicDir)) {
+    const staticPath = join(staticDir, url.pathname);
+    if (req.method === 'GET' && staticPath.startsWith(staticDir)) {
       serveFile(staticPath, res);
       return;
     }
