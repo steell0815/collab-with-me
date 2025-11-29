@@ -2,6 +2,7 @@ const cardsEl = document.querySelector('#cards');
 const statusEl = document.querySelector('#status');
 const userEl = document.querySelector('#user');
 const titleEl = document.querySelector('#title');
+const textEl = document.querySelector('#text');
 const columnEl = document.querySelector('#column');
 const createButton = document.querySelector('#create');
 
@@ -38,6 +39,7 @@ const connectEvents = () => {
 createButton.addEventListener('click', async () => {
   const user = userEl.value.trim();
   const title = titleEl.value.trim();
+  const text = textEl.value;
   const column = columnEl.value;
   if (!user || !title) {
     setStatus('User and title are required', true);
@@ -47,13 +49,14 @@ createButton.addEventListener('click', async () => {
     const res = await fetch('/api/cards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user, title, column })
+      body: JSON.stringify({ user, title, column, text })
     });
     if (!res.ok) {
       throw new Error(await res.text());
     }
     setStatus('Card created');
     titleEl.value = '';
+    textEl.value = '';
     await fetchCards();
   } catch (err) {
     setStatus(err.message || 'Error creating card', true);
@@ -83,6 +86,54 @@ cardsEl.addEventListener('click', async (event) => {
       await fetchCards();
     } catch (err) {
       setStatus(err.message || 'Error moving card', true);
+    }
+  }
+  if (target.matches('button[data-save-text]') || target.dataset.saveText === 'true') {
+    const cardTitle = target.getAttribute('data-title');
+    const user = userEl.value.trim();
+    const textarea = target.parentElement.querySelector('textarea');
+    const text = textarea ? textarea.value : '';
+    if (!cardTitle || !user) {
+      setStatus('User required to edit text', true);
+      return;
+    }
+    try {
+      const res = await fetch('/api/cards/text', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, title: cardTitle, text })
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      setStatus(`Updated text for "${cardTitle}"`);
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error updating text', true);
+    }
+  }
+  if (target.matches('button[data-save-title]') || target.dataset.saveTitle === 'true') {
+    const oldTitle = target.getAttribute('data-old-title');
+    const user = userEl.value.trim();
+    const input = target.parentElement.querySelector('input[type="text"]');
+    const newTitle = input ? input.value.trim() : '';
+    if (!oldTitle || !newTitle || !user) {
+      setStatus('User and title required to edit title', true);
+      return;
+    }
+    try {
+      const res = await fetch('/api/cards/title', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, oldTitle, newTitle })
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      setStatus(`Updated title to "${newTitle}"`);
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error updating title', true);
     }
   }
   if (target.matches('button[data-delete]')) {
@@ -150,6 +201,41 @@ const renderCards = (cards) => {
       deleteBtn.dataset.title = card.title;
       deleteBtn.textContent = 'Delete';
       actions.appendChild(deleteBtn);
+
+      if (card.text) {
+        const textEl = document.createElement('p');
+        textEl.textContent = card.text;
+        textEl.className = 'card-text';
+        div.appendChild(textEl);
+      }
+
+      const editForm = document.createElement('div');
+      editForm.className = 'edit-text';
+      const textarea = document.createElement('textarea');
+      textarea.value = card.text || '';
+      textarea.rows = 3;
+      textarea.dataset.title = card.title;
+      const saveBtn = document.createElement('button');
+      saveBtn.dataset.saveText = 'true';
+      saveBtn.dataset.title = card.title;
+      saveBtn.textContent = 'Save text';
+      editForm.appendChild(textarea);
+      editForm.appendChild(saveBtn);
+      div.appendChild(editForm);
+
+      const editTitleWrap = document.createElement('div');
+      editTitleWrap.className = 'edit-title';
+      const titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.value = card.title;
+      titleInput.dataset.oldTitle = card.title;
+      const saveTitleBtn = document.createElement('button');
+      saveTitleBtn.dataset.saveTitle = 'true';
+      saveTitleBtn.dataset.oldTitle = card.title;
+      saveTitleBtn.textContent = 'Save title';
+      editTitleWrap.appendChild(titleInput);
+      editTitleWrap.appendChild(saveTitleBtn);
+      div.appendChild(editTitleWrap);
 
       div.appendChild(actions);
       laneDiv.appendChild(div);

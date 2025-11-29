@@ -75,13 +75,18 @@ label {
 
 input,
 select,
-button {
+button,
+textarea {
   padding: 0.5rem;
   border-radius: 8px;
   border: 1px solid #1d9bf0;
   font-size: 1rem;
   background: #0b1420;
   color: #e2f1ff;
+}
+
+textarea {
+  resize: vertical;
 }
 
 button {
@@ -136,6 +141,17 @@ button:hover {
   color: #9bb7d1;
 }
 
+.card-text {
+  margin: 0;
+  color: #cfe9ff;
+}
+
+.edit-text,
+.edit-title {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -143,7 +159,9 @@ button:hover {
 }
 
 #cards button[data-move],
-#cards button[data-delete] {
+#cards button[data-delete],
+button[data-save-text],
+button[data-save-title] {
   background: #102132;
   color: #e2f1ff;
   border: 1px solid rgba(69, 181, 255, 0.4);
@@ -155,7 +173,9 @@ button:hover {
 }
 
 #cards button[data-move]:hover,
-#cards button[data-delete]:hover {
+#cards button[data-delete]:hover,
+button[data-save-text]:hover,
+button[data-save-title]:hover {
   background: #1a324a;
 }
 

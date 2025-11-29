@@ -63,22 +63,30 @@ export const given = {
     context!.currentUser = userId;
     context!.authenticatedUsers.add(userId);
   },
-  cardExists: ({ title, column }: { title: string; column: Column }) => {
+  cardExists: ({ title, column, text }: { title: string; column: Column; text?: string }) => {
     const ctx = ensureContext();
     if (!ctx.currentUser) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.createCard(ctx.currentUser, { title, column });
+    ctx.service.createCard(ctx.currentUser, { title, column, text });
   }
 };
 
 export const when = {
-  userCreatesCard: ({ title, column }: { title: string; column: Column }) => {
+  userCreatesCard: ({
+    title,
+    column,
+    text
+  }: {
+    title: string;
+    column: Column;
+    text?: string;
+  }) => {
     const ctx = ensureContext();
     if (!ctx.currentUser) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.createCard(ctx.currentUser, { title, column });
+    ctx.service.createCard(ctx.currentUser, { title, column, text });
   },
   userMovesCard: (title: string, column: Column, userId?: string) => {
     const ctx = ensureContext();
@@ -90,6 +98,34 @@ export const when = {
       throw new Error(`User ${actor} not authenticated`);
     }
     ctx.service.moveCard(actor, title, column);
+  },
+  userChangesText: ({
+    title,
+    text
+  }: {
+    title: string;
+    text?: string;
+  }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    ctx.service.updateText(actor, title, text);
+  },
+  userChangesTitle: ({
+    oldTitle,
+    newTitle
+  }: {
+    oldTitle: string;
+    newTitle: string;
+  }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    ctx.service.updateTitle(actor, oldTitle, newTitle);
   },
   systemRestarts: () => {
     const ctx = ensureContext();
@@ -111,12 +147,23 @@ export const when = {
 };
 
 export const then = {
-  boardShowsCard: (title: string, column: Column, _viewer?: string) => {
+  boardShowsCard: (title: string, textOrColumn: string | Column, columnMaybe?: Column) => {
     const ctx = ensureContext();
     const cards = ctx.service.listCards();
-    const found = cards.find(
-      (card) => card.title === title && card.column === column
-    );
+    let found;
+    if (columnMaybe) {
+      const text = typeof textOrColumn === 'string' ? textOrColumn : undefined;
+      const column = columnMaybe;
+      found = cards.find(
+        (card) =>
+          card.title === title &&
+          card.column === column &&
+          (text === undefined || (card.text ?? '') === text)
+      );
+    } else {
+      const column = textOrColumn as Column;
+      found = cards.find((card) => card.title === title && card.column === column);
+    }
     expect(found).toBeDefined();
   },
   boardDoesNotShowCard: (title: string) => {

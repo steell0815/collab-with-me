@@ -7,6 +7,7 @@ export type Card = {
   id: string;
   title: string;
   column: Column;
+  text?: string;
   createdBy: string;
 };
 
@@ -63,16 +64,18 @@ export class BoardService {
     private readonly notifier: BoardNotifier = new NoopBoardNotifier()
   ) {}
 
-  createCard(userId: string, input: { title: string; column: Column }): Card {
+  createCard(userId: string, input: { title: string; column: Column; text?: string }): Card {
     if (!userId) {
       throw new Error('User must be authenticated to create a card');
     }
     const safeTitle = sanitizeTitle(input.title);
+    const safeText = sanitizeText(input.text);
     const cards = this.repository.load();
     const card: Card = {
       id: this.generateId(cards.length),
       title: safeTitle,
       column: input.column,
+      text: safeText,
       createdBy: userId
     };
     cards.push(card);
@@ -92,6 +95,42 @@ export class BoardService {
       throw new Error(`Card with title '${safeTitle}' not found`);
     }
     const updated = { ...card, column: newColumn };
+    const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
+    this.repository.save(updatedCards);
+    this.notifier.notifyBoardUpdated(userId, updatedCards);
+    return updated;
+  }
+
+  updateText(userId: string, title: string, text?: string): Card {
+    if (!userId) {
+      throw new Error('User must be authenticated to change text');
+    }
+    const safeTitle = sanitizeTitle(title);
+    const safeText = sanitizeText(text);
+    const cards = this.repository.load();
+    const card = cards.find((c) => c.title === safeTitle);
+    if (!card) {
+      throw new Error(`Card with title '${safeTitle}' not found`);
+    }
+    const updated = { ...card, text: safeText };
+    const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
+    this.repository.save(updatedCards);
+    this.notifier.notifyBoardUpdated(userId, updatedCards);
+    return updated;
+  }
+
+  updateTitle(userId: string, oldTitle: string, newTitle: string): Card {
+    if (!userId) {
+      throw new Error('User must be authenticated to change title');
+    }
+    const safeOld = sanitizeTitle(oldTitle);
+    const safeNew = sanitizeTitle(newTitle);
+    const cards = this.repository.load();
+    const card = cards.find((c) => c.title === safeOld);
+    if (!card) {
+      throw new Error(`Card with title '${safeOld}' not found`);
+    }
+    const updated = { ...card, title: safeNew };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
     this.repository.save(updatedCards);
     this.notifier.notifyBoardUpdated(userId, updatedCards);
@@ -134,4 +173,14 @@ export function sanitizeTitle(title: string): string {
     throw new Error('Title is too long');
   }
   return withoutLines;
+}
+
+export function sanitizeText(text?: string): string | undefined {
+  if (text == null) return undefined;
+  const trimmed = String(text).trim();
+  if (!trimmed) return '';
+  if (trimmed.length > 2000) {
+    throw new Error('Text is too long');
+  }
+  return trimmed;
 }

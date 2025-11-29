@@ -6,7 +6,8 @@ import {
   BoardService,
   Column,
   FileBoardRepository,
-  sanitizeTitle
+  sanitizeTitle,
+  sanitizeText
 } from './board';
 import { SSEHub } from './sseHub';
 
@@ -25,8 +26,8 @@ const boardService = new BoardService(repository, {
 
 const staticCandidates = [
   process.env.STATIC_DIR,
-  join(process.cwd(), 'dist'),
-  join(process.cwd(), 'public')
+  join(process.cwd(), 'public'),
+  join(process.cwd(), 'dist')
 ].filter((p): p is string => !!p);
 
 const staticDirs = staticCandidates.filter((p) => existsSync(p));
@@ -102,6 +103,7 @@ const server = createServer(async (req, res) => {
       const body = await parseBody(req);
       let title = body.title;
       const column = body.column as Column;
+      const text = body.text as string | undefined;
       const user = body.user;
       if (typeof title !== 'string' || typeof column !== 'string') {
         res.writeHead(400);
@@ -120,12 +122,20 @@ const server = createServer(async (req, res) => {
         res.end('Invalid column');
         return;
       }
+      let safeText: string | undefined;
+      try {
+        safeText = sanitizeText(text);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid text');
+        return;
+      }
       if (typeof user !== 'string' || user.trim() === '') {
         res.writeHead(401);
         res.end('User required');
         return;
       }
-      const card = boardService.createCard(user, { title, column });
+      const card = boardService.createCard(user, { title, column, text: safeText });
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(card));
       return;
@@ -160,6 +170,81 @@ const server = createServer(async (req, res) => {
       }
       try {
         const card = boardService.moveCard(user, title, column);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/text') {
+      const body = await parseBody(req);
+      let title = body.title;
+      const text = body.text as string | undefined;
+      const user = body.user;
+      if (typeof title !== 'string') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      try {
+        title = sanitizeTitle(title);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid title');
+        return;
+      }
+      let safeText: string | undefined;
+      try {
+        safeText = sanitizeText(text);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid text');
+        return;
+      }
+      if (typeof user !== 'string' || user.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.updateText(user, title, safeText);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/title') {
+      const body = await parseBody(req);
+      let oldTitle = body.oldTitle;
+      let newTitle = body.newTitle;
+      const user = body.user;
+      if (typeof oldTitle !== 'string' || typeof newTitle !== 'string') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      try {
+        oldTitle = sanitizeTitle(oldTitle);
+        newTitle = sanitizeTitle(newTitle);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid title');
+        return;
+      }
+      if (typeof user !== 'string' || user.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.updateTitle(user, oldTitle, newTitle);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
       } catch (err: any) {
