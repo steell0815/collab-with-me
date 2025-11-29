@@ -10,7 +10,7 @@ try {
     rmSync(distDir, { recursive: true, force: true });
   }
   mkdirSync(distDir, { recursive: true });
-  cpSync(publicDir, distDir, { recursive: true });
+cpSync(publicDir, distDir, { recursive: true });
   console.log(`Copied public -> dist`);
 } catch (err) {
   console.error('Build failed', err);
