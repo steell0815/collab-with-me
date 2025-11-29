@@ -5,7 +5,8 @@ import { URL } from 'url';
 import {
   BoardService,
   Column,
-  FileBoardRepository
+  FileBoardRepository,
+  sanitizeTitle
 } from './board';
 import { SSEHub } from './sseHub';
 
@@ -99,12 +100,19 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/cards') {
       const body = await parseBody(req);
-      const title = body.title;
+      let title = body.title;
       const column = body.column as Column;
       const user = body.user;
       if (typeof title !== 'string' || typeof column !== 'string') {
         res.writeHead(400);
         res.end('Invalid payload');
+        return;
+      }
+      try {
+        title = sanitizeTitle(title);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid title');
         return;
       }
       if (!isColumn(column)) {
@@ -125,12 +133,19 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'PATCH' && url.pathname === '/api/cards/move') {
       const body = await parseBody(req);
-      const title = body.title;
+      let title = body.title;
       const column = body.column as Column;
       const user = body.user;
       if (typeof title !== 'string' || typeof column !== 'string') {
         res.writeHead(400);
         res.end('Invalid payload');
+        return;
+      }
+      try {
+        title = sanitizeTitle(title);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid title');
         return;
       }
       if (!isColumn(column)) {
@@ -156,11 +171,18 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'DELETE' && url.pathname === '/api/cards') {
       const body = await parseBody(req);
-      const title = body.title;
+      let title = body.title;
       const user = body.user;
       if (typeof title !== 'string') {
         res.writeHead(400);
         res.end('Title required');
+        return;
+      }
+      try {
+        title = sanitizeTitle(title);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid title');
         return;
       }
       if (typeof user !== 'string' || user.trim() === '') {

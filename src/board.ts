@@ -67,10 +67,11 @@ export class BoardService {
     if (!userId) {
       throw new Error('User must be authenticated to create a card');
     }
+    const safeTitle = sanitizeTitle(input.title);
     const cards = this.repository.load();
     const card: Card = {
       id: this.generateId(cards.length),
-      title: input.title,
+      title: safeTitle,
       column: input.column,
       createdBy: userId
     };
@@ -84,10 +85,11 @@ export class BoardService {
     if (!userId) {
       throw new Error('User must be authenticated to move a card');
     }
+    const safeTitle = sanitizeTitle(title);
     const cards = this.repository.load();
-    const card = cards.find((c) => c.title === title);
+    const card = cards.find((c) => c.title === safeTitle);
     if (!card) {
-      throw new Error(`Card with title '${title}' not found`);
+      throw new Error(`Card with title '${safeTitle}' not found`);
     }
     const updated = { ...card, column: newColumn };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
@@ -100,10 +102,11 @@ export class BoardService {
     if (!userId) {
       throw new Error('User must be authenticated to delete a card');
     }
+    const safeTitle = sanitizeTitle(title);
     const cards = this.repository.load();
-    const next = cards.filter((c) => c.title !== title);
+    const next = cards.filter((c) => c.title !== safeTitle);
     if (next.length === cards.length) {
-      throw new Error(`Card with title '${title}' not found`);
+      throw new Error(`Card with title '${safeTitle}' not found`);
     }
     this.repository.save(next);
     this.notifier.notifyBoardUpdated(userId, next);
@@ -120,3 +123,15 @@ export class BoardService {
 }
 
 export const SWIMLANES: Column[] = ['Todo', 'In Progress', 'Done', 'Waste'];
+
+export function sanitizeTitle(title: string): string {
+  const trimmed = (title ?? '').trim();
+  if (!trimmed) {
+    throw new Error('Title is required');
+  }
+  const withoutLines = trimmed.replace(/[\r\n]+/g, ' ');
+  if (withoutLines.length > 200) {
+    throw new Error('Title is too long');
+  }
+  return withoutLines;
+}

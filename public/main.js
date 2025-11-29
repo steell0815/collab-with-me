@@ -115,25 +115,43 @@ const renderCards = (cards) => {
   lanes.forEach((lane) => {
     const laneDiv = document.createElement('div');
     laneDiv.className = 'lane';
-    laneDiv.innerHTML = `<h3>${lane}</h3>`;
+    const laneHeader = document.createElement('h3');
+    laneHeader.textContent = lane;
+    laneDiv.appendChild(laneHeader);
+
     const columnCards = cards.filter((card) => card.column === lane);
     columnCards.forEach((card) => {
       const div = document.createElement('div');
       div.className = 'card';
-      div.innerHTML = `
-        <strong>${card.title}</strong>
-        <small>${card.createdBy}</small>
-        <div class="actions">
-          ${lanes
-            .filter((col) => col !== card.column)
-            .map(
-              (col) =>
-                `<button data-move="${col}" data-title="${card.title}">Move to ${col}</button>`
-            )
-            .join('')}
-          <button data-delete="true" data-title="${card.title}">Delete</button>
-        </div>
-      `;
+
+      const titleEl = document.createElement('strong');
+      titleEl.textContent = card.title;
+      div.appendChild(titleEl);
+
+      const userEl = document.createElement('small');
+      userEl.textContent = card.createdBy;
+      div.appendChild(userEl);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      lanes
+        .filter((col) => col !== card.column)
+        .forEach((col) => {
+          const btn = document.createElement('button');
+          btn.dataset.move = col;
+          btn.dataset.title = card.title;
+          btn.textContent = `Move to ${col}`;
+          actions.appendChild(btn);
+        });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.dataset.delete = 'true';
+      deleteBtn.dataset.title = card.title;
+      deleteBtn.textContent = 'Delete';
+      actions.appendChild(deleteBtn);
+
+      div.appendChild(actions);
       laneDiv.appendChild(div);
     });
     cardsEl.appendChild(laneDiv);
