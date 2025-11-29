@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "start": "npm run dev",
+    "build": "echo \"No build step defined yet\"",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "compute:version": "bash ./scripts/compute-version.sh",
