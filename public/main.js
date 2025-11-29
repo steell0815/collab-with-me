@@ -16,6 +16,25 @@ const fetchCards = async () => {
   renderCards(data);
 };
 
+const connectEvents = () => {
+  const source = new EventSource('/events');
+  source.onopen = () => setStatus('Live updates connected');
+  source.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (payload.cards) {
+        renderCards(payload.cards);
+        setStatus('Board updated');
+      }
+    } catch (err) {
+      console.error('Failed to handle event', err);
+    }
+  };
+  source.onerror = () => {
+    setStatus('Live updates disconnected; retrying...', true);
+  };
+};
+
 createButton.addEventListener('click', async () => {
   const user = userEl.value.trim();
   const title = titleEl.value.trim();
@@ -102,3 +121,5 @@ fetchCards().catch((err) => {
   console.error(err);
   setStatus('Failed to load cards', true);
 });
+
+connectEvents();

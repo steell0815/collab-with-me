@@ -7,9 +7,18 @@ import {
   Column,
   InMemoryBoardRepository
 } from './board';
+import { SSEHub } from './sseHub';
 
 const repository = new InMemoryBoardRepository();
-const boardService = new BoardService(repository);
+const hub = new SSEHub();
+const boardService = new BoardService(repository, {
+  notifyCardChanged: (_actor, _card) => {
+    hub.broadcast({
+      type: 'cardChanged',
+      cards: repository.load()
+    });
+  }
+});
 
 const publicDir = join(process.cwd(), 'public');
 
@@ -59,6 +68,11 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/cards') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(boardService.listCards()));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/events') {
+      hub.subscribe(req, res);
       return;
     }
 
@@ -144,6 +158,8 @@ const port = Number(process.env.PORT || 5173);
 server.listen(port, () => {
   console.log(`Feedback server running at http://localhost:${port}`);
 });
+
+setInterval(() => hub.heartbeat(), 15000);
 
 function isColumn(value: string): value is Column {
   return value === 'Todo' || value === 'In Progress' || value === 'Done' || value === 'Waste';
