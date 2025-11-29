@@ -112,29 +112,55 @@ cardsEl.addEventListener('click', async (event) => {
       setStatus(err.message || 'Error updating text', true);
     }
   }
-  if (target.matches('button[data-save-title]') || target.dataset.saveTitle === 'true') {
+  if (target.matches('button[data-edit-toggle]') || target.dataset.editToggle === 'true') {
+    const cardId = target.getAttribute('data-card-id');
+    if (!cardId) return;
+    const next = !editState.get(cardId);
+    editState.set(cardId, next);
+    await fetchCards();
+  }
+  if (target.matches('button[data-save-details]') || target.dataset.saveDetails === 'true') {
+    const cardId = target.getAttribute('data-card-id');
     const oldTitle = target.getAttribute('data-old-title');
     const user = userEl.value.trim();
-    const input = target.parentElement.querySelector('input[type="text"]');
-    const newTitle = input ? input.value.trim() : '';
-    if (!oldTitle || !newTitle || !user) {
-      setStatus('User and title required to edit title', true);
+    const wrapper = target.parentElement;
+    const titleInput = wrapper.querySelector('input[type="text"]');
+    const textarea = wrapper.querySelector('textarea');
+    const newTitle = titleInput ? titleInput.value.trim() : '';
+    const text = textarea ? textarea.value : '';
+    if (!cardId || !oldTitle || !newTitle || !user) {
+      setStatus('User and title required to edit details', true);
       return;
     }
     try {
-      const res = await fetch('/api/cards/title', {
+      const resTitle = await fetch('/api/cards/title', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user, oldTitle, newTitle })
       });
-      if (!res.ok) {
-        throw new Error(await res.text());
+      if (!resTitle.ok) {
+        throw new Error(await resTitle.text());
       }
-      setStatus(`Updated title to "${newTitle}"`);
+      const resText = await fetch('/api/cards/text', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, title: newTitle, text })
+      });
+      if (!resText.ok) {
+        throw new Error(await resText.text());
+      }
+      setStatus(`Updated card "${newTitle}"`);
+      editState.set(cardId, false);
       await fetchCards();
     } catch (err) {
-      setStatus(err.message || 'Error updating title', true);
+      setStatus(err.message || 'Error updating card', true);
     }
+  }
+  if (target.matches('button[data-cancel-edit]') || target.dataset.cancelEdit === 'true') {
+    const cardId = target.getAttribute('data-card-id');
+    if (!cardId) return;
+    editState.set(cardId, false);
+    await fetchCards();
   }
   if (target.matches('button[data-delete]')) {
     const cardTitle = target.getAttribute('data-title');
@@ -174,6 +200,7 @@ const renderCards = (cards) => {
     columnCards.forEach((card) => {
       const div = document.createElement('div');
       div.className = 'card';
+      div.dataset.cardId = card.id;
 
       const titleEl = document.createElement('strong');
       titleEl.textContent = card.title;
@@ -209,34 +236,52 @@ const renderCards = (cards) => {
         div.appendChild(textEl);
       }
 
-      const editForm = document.createElement('div');
-      editForm.className = 'edit-text';
-      const textarea = document.createElement('textarea');
-      textarea.value = card.text || '';
-      textarea.rows = 3;
-      textarea.dataset.title = card.title;
-      const saveBtn = document.createElement('button');
-      saveBtn.dataset.saveText = 'true';
-      saveBtn.dataset.title = card.title;
-      saveBtn.textContent = 'Save text';
-      editForm.appendChild(textarea);
-      editForm.appendChild(saveBtn);
-      div.appendChild(editForm);
+      const viewBlock = document.createElement('div');
+      viewBlock.className = 'view-block';
+      viewBlock.appendChild(titleEl);
+      viewBlock.appendChild(userEl);
+      if (card.text) {
+        const textElView = document.createElement('p');
+        textElView.textContent = card.text;
+        textElView.className = 'card-text';
+        viewBlock.appendChild(textElView);
+      }
+      const editToggle = document.createElement('button');
+      editToggle.dataset.editToggle = 'true';
+      editToggle.dataset.cardId = card.id;
+      editToggle.textContent = editState.get(card.id) ? 'View' : 'Edit';
+      viewBlock.appendChild(editToggle);
 
-      const editTitleWrap = document.createElement('div');
-      editTitleWrap.className = 'edit-title';
+      const editBlock = document.createElement('div');
+      editBlock.className = 'edit-block';
+      if (!editState.get(card.id)) {
+        editBlock.classList.add('hidden');
+      }
       const titleInput = document.createElement('input');
       titleInput.type = 'text';
       titleInput.value = card.title;
       titleInput.dataset.oldTitle = card.title;
-      const saveTitleBtn = document.createElement('button');
-      saveTitleBtn.dataset.saveTitle = 'true';
-      saveTitleBtn.dataset.oldTitle = card.title;
-      saveTitleBtn.textContent = 'Save title';
-      editTitleWrap.appendChild(titleInput);
-      editTitleWrap.appendChild(saveTitleBtn);
-      div.appendChild(editTitleWrap);
+      titleInput.dataset.cardId = card.id;
+      const textarea = document.createElement('textarea');
+      textarea.value = card.text || '';
+      textarea.rows = 3;
+      textarea.dataset.cardId = card.id;
+      const saveBtn = document.createElement('button');
+      saveBtn.dataset.saveDetails = 'true';
+      saveBtn.dataset.cardId = card.id;
+      saveBtn.dataset.oldTitle = card.title;
+      saveBtn.textContent = 'Save';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.dataset.cancelEdit = 'true';
+      cancelBtn.dataset.cardId = card.id;
+      cancelBtn.textContent = 'Cancel';
+      editBlock.appendChild(titleInput);
+      editBlock.appendChild(textarea);
+      editBlock.appendChild(saveBtn);
+      editBlock.appendChild(cancelBtn);
 
+      div.appendChild(viewBlock);
+      div.appendChild(editBlock);
       div.appendChild(actions);
       laneDiv.appendChild(div);
     });
@@ -256,3 +301,5 @@ const appVersion = import.meta.env?.APP_VERSION || window.APP_VERSION || '0.0.0-
 if (versionEl) {
   versionEl.textContent = `Version: ${appVersion}`;
 }
+
+const editState = new Map();

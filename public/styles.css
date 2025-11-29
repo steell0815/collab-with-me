@@ -152,6 +152,20 @@ button:hover {
   gap: 0.35rem;
 }
 
+.view-block {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.edit-block {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.hidden {
+  display: none;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
