@@ -72,9 +72,15 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/events') {
+      const lastEventIdHeader = req.headers['last-event-id'];
+      const lastEventId =
+        typeof lastEventIdHeader === 'string' ? Number(lastEventIdHeader) : undefined;
       hub.subscribe(req, res, {
-        type: 'cardChanged',
-        cards: repository.load()
+        initialMessage: {
+          type: 'cardChanged',
+          cards: repository.load()
+        },
+        lastEventId: Number.isFinite(lastEventId) ? lastEventId : undefined
       });
       return;
     }
