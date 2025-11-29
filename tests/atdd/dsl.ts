@@ -1,26 +1,66 @@
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
+import {
+  BoardService,
+  Column,
+  InMemoryBoardRepository
+} from '../../src/board';
 
-type Column = 'Todo' | 'In Progress' | 'Done' | 'Waste';
-
-const unimplemented = (name: string) => () => {
-  throw new Error(`${name} not implemented`);
+type TestContext = {
+  currentUser?: string;
+  repository: InMemoryBoardRepository;
+  service: BoardService;
 };
 
-export const scenario = test.skip;
+let context: TestContext | null = null;
+
+const createContext = (): TestContext => {
+  const repository = new InMemoryBoardRepository();
+  const service = new BoardService(repository);
+  return { repository, service };
+};
+
+export const scenario = (name: string, fn: () => void) =>
+  test(name, () => {
+    context = createContext();
+    fn();
+  });
 
 export const given = {
-  userIsAuthenticated: (userId: string) =>
-    unimplemented(`Authenticate user ${userId}`)()
+  userIsAuthenticated: (userId: string) => {
+    ensureContext();
+    context!.currentUser = userId;
+  }
 };
 
 export const when = {
-  userCreatesCard: ({ title, column }: { title: string; column: Column }) =>
-    unimplemented(`Create card '${title}' in ${column}`)()
+  userCreatesCard: ({ title, column }: { title: string; column: Column }) => {
+    const ctx = ensureContext();
+    if (!ctx.currentUser) {
+      throw new Error('No authenticated user in context');
+    }
+    ctx.service.createCard(ctx.currentUser, { title, column });
+  }
 };
 
 export const then = {
-  boardShowsCard: (title: string, column: Column) =>
-    unimplemented(`Board should show card '${title}' in ${column}`)(),
-  changeIsPersisted: () =>
-    unimplemented('Change should be persisted')()
+  boardShowsCard: (title: string, column: Column) => {
+    const ctx = ensureContext();
+    const cards = ctx.service.listCards();
+    const found = cards.find(
+      (card) => card.title === title && card.column === column
+    );
+    expect(found).toBeDefined();
+  },
+  changeIsPersisted: () => {
+    const ctx = ensureContext();
+    const persisted = ctx.repository.load();
+    expect(persisted.length).toBeGreaterThan(0);
+  }
+};
+
+const ensureContext = (): TestContext => {
+  if (!context) {
+    throw new Error('Test context not initialized');
+  }
+  return context;
 };
