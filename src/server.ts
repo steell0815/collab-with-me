@@ -2,7 +2,7 @@ import { createReadStream, existsSync } from 'fs';
 import { createServer } from 'http';
 import { extname, join } from 'path';
 import { URL } from 'url';
-import { BoardService, InMemoryBoardRepository } from './board';
+import { BoardService, Column, InMemoryBoardRepository } from './board';
 
 const repository = new InMemoryBoardRepository();
 const boardService = new BoardService(repository);
@@ -61,14 +61,14 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/cards') {
       const body = await parseBody(req);
       const title = body.title;
-      const column = body.column;
+      const column = body.column as Column;
       const user = body.user;
       if (typeof title !== 'string' || typeof column !== 'string') {
         res.writeHead(400);
         res.end('Invalid payload');
         return;
       }
-      if (column !== 'Todo' && column !== 'In Progress' && column !== 'Done' && column !== 'Waste') {
+      if (!isColumn(column)) {
         res.writeHead(400);
         res.end('Invalid column');
         return;
@@ -81,6 +81,37 @@ const server = createServer(async (req, res) => {
       const card = boardService.createCard(user, { title, column });
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(card));
+      return;
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/move') {
+      const body = await parseBody(req);
+      const title = body.title;
+      const column = body.column as Column;
+      const user = body.user;
+      if (typeof title !== 'string' || typeof column !== 'string') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      if (!isColumn(column)) {
+        res.writeHead(400);
+        res.end('Invalid column');
+        return;
+      }
+      if (typeof user !== 'string' || user.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.moveCard(user, title, column);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
       return;
     }
 
@@ -109,3 +140,7 @@ const port = Number(process.env.PORT || 5173);
 server.listen(port, () => {
   console.log(`Feedback server running at http://localhost:${port}`);
 });
+
+function isColumn(value: string): value is Column {
+  return value === 'Todo' || value === 'In Progress' || value === 'Done' || value === 'Waste';
+}

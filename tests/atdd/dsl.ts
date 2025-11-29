@@ -29,6 +29,13 @@ export const given = {
   userIsAuthenticated: (userId: string) => {
     ensureContext();
     context!.currentUser = userId;
+  },
+  cardExists: ({ title, column }: { title: string; column: Column }) => {
+    const ctx = ensureContext();
+    if (!ctx.currentUser) {
+      throw new Error('No authenticated user in context');
+    }
+    ctx.service.createCard(ctx.currentUser, { title, column });
   }
 };
 
@@ -39,6 +46,13 @@ export const when = {
       throw new Error('No authenticated user in context');
     }
     ctx.service.createCard(ctx.currentUser, { title, column });
+  },
+  userMovesCard: (title: string, column: Column) => {
+    const ctx = ensureContext();
+    if (!ctx.currentUser) {
+      throw new Error('No authenticated user in context');
+    }
+    ctx.service.moveCard(ctx.currentUser, title, column);
   }
 };
 

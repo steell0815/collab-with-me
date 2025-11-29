@@ -43,6 +43,21 @@ export class BoardService {
     return card;
   }
 
+  moveCard(userId: string, title: string, newColumn: Column): Card {
+    if (!userId) {
+      throw new Error('User must be authenticated to move a card');
+    }
+    const cards = this.repository.load();
+    const card = cards.find((c) => c.title === title);
+    if (!card) {
+      throw new Error(`Card with title '${title}' not found`);
+    }
+    const updated = { ...card, column: newColumn };
+    const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
+    this.repository.save(updatedCards);
+    return updated;
+  }
+
   listCards(): Card[] {
     return this.repository.load();
   }

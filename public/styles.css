@@ -81,6 +81,22 @@ button:hover {
   color: #777;
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+#cards button[data-move] {
+  background: #e9ecef;
+  color: #222;
+  border: 1px solid #ccc;
+}
+
+#cards button[data-move]:hover {
+  background: #dde1e5;
+}
+
 #status {
   min-height: 1.2rem;
   font-weight: 600;
