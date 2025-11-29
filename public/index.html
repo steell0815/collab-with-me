@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Collab With Me - Feedback Arena</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Collab With Me</h1>
+      <p>Manual feedback arena for creating a card in Todo.</p>
+    </header>
+
+    <main>
+      <section class="controls">
+        <label>
+          User
+          <input id="user" type="text" value="alice" />
+        </label>
+        <label>
+          Title
+          <input id="title" type="text" placeholder="Write tests" />
+        </label>
+        <label>
+          Column
+          <select id="column">
+            <option>Todo</option>
+            <option>In Progress</option>
+            <option>Done</option>
+            <option>Waste</option>
+          </select>
+        </label>
+        <button id="create">Create card</button>
+        <p id="status"></p>
+      </section>
+
+      <section>
+        <h2>Cards</h2>
+        <div id="cards" class="cards"></div>
+      </section>
+    </main>
+
+    <script src="/main.js" type="module"></script>
+  </body>
+</html>

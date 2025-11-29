@@ -9,7 +9,7 @@
     "rootDir": ".",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["vitest"]
+    "types": ["vitest", "node"]
   },
   "include": ["src", "tests", "scripts", "vitest.config.ts", "vitest.config.js"]
 }

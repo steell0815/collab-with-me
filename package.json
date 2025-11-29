@@ -4,10 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "npm run dev",
     "test": "vitest run",
     "test:watch": "vitest watch"
   },
   "devDependencies": {
+    "tsx": "^4.7.0",
     "typescript": "^5.4.5",
     "vitest": "^1.6.1"
   }
