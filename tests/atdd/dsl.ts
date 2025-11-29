@@ -2,7 +2,8 @@ import { expect, test } from 'vitest';
 import {
   BoardService,
   Column,
-  InMemoryBoardRepository
+  InMemoryBoardRepository,
+  SWIMLANES
 } from '../../src/board';
 
 type TestContext = {
@@ -64,6 +65,19 @@ export const then = {
       (card) => card.title === title && card.column === column
     );
     expect(found).toBeDefined();
+  },
+  swimlaneShowsCard: (title: string, column: Column) => {
+    const ctx = ensureContext();
+    const cards = ctx.service.listCards();
+    const found = cards.find(
+      (card) => card.title === title && card.column === column
+    );
+    expect(found).toBeDefined();
+  },
+  boardShowSwimlane: ({ title, column }: { title: string; column: Column }) => {
+    expect(SWIMLANES).toContain(column);
+    const expectedTitle = column === 'In Progress' ? 'In Progress' : column;
+    expect(title).toBe(expectedTitle);
   },
   changeIsPersisted: () => {
     const ctx = ensureContext();

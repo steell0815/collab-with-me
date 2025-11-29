@@ -67,3 +67,5 @@ export class BoardService {
     return `card-${existingCount + 1}-${unique}`;
   }
 }
+
+export const SWIMLANES: Column[] = ['Todo', 'In Progress', 'Done', 'Waste'];

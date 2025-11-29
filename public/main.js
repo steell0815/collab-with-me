@@ -70,24 +70,31 @@ cardsEl.addEventListener('click', async (event) => {
 
 const renderCards = (cards) => {
   cardsEl.innerHTML = '';
-  cards.forEach((card) => {
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.innerHTML = `
-      <strong>${card.title}</strong>
-      <span>${card.column}</span>
-      <small>${card.createdBy}</small>
-      <div class="actions">
-        ${['Todo', 'In Progress', 'Done', 'Waste']
-          .filter((col) => col !== card.column)
-          .map(
-            (col) =>
-              `<button data-move="${col}" data-title="${card.title}">Move to ${col}</button>`
-          )
-          .join('')}
-      </div>
-    `;
-    cardsEl.appendChild(div);
+  const lanes = ['Todo', 'In Progress', 'Done', 'Waste'];
+  lanes.forEach((lane) => {
+    const laneDiv = document.createElement('div');
+    laneDiv.className = 'lane';
+    laneDiv.innerHTML = `<h3>${lane}</h3>`;
+    const columnCards = cards.filter((card) => card.column === lane);
+    columnCards.forEach((card) => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <strong>${card.title}</strong>
+        <small>${card.createdBy}</small>
+        <div class="actions">
+          ${lanes
+            .filter((col) => col !== card.column)
+            .map(
+              (col) =>
+                `<button data-move="${col}" data-title="${card.title}">Move to ${col}</button>`
+            )
+            .join('')}
+        </div>
+      `;
+      laneDiv.appendChild(div);
+    });
+    cardsEl.appendChild(laneDiv);
   });
 };
 

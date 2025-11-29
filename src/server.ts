@@ -2,7 +2,11 @@ import { createReadStream, existsSync } from 'fs';
 import { createServer } from 'http';
 import { extname, join } from 'path';
 import { URL } from 'url';
-import { BoardService, Column, InMemoryBoardRepository } from './board';
+import {
+  BoardService,
+  Column,
+  InMemoryBoardRepository
+} from './board';
 
 const repository = new InMemoryBoardRepository();
 const boardService = new BoardService(repository);
