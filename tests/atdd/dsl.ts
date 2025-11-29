@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import {
   BoardService,
+  BoardNotifier,
   Column,
   InMemoryBoardRepository,
   SWIMLANES
@@ -8,16 +9,33 @@ import {
 
 type TestContext = {
   currentUser?: string;
+  authenticatedUsers: Set<string>;
   repository: InMemoryBoardRepository;
   service: BoardService;
+  notifications: Map<string, Array<{ title: string; column: Column }>>;
 };
 
 let context: TestContext | null = null;
 
 const createContext = (): TestContext => {
   const repository = new InMemoryBoardRepository();
-  const service = new BoardService(repository);
-  return { repository, service };
+  const notifications = new Map<string, Array<{ title: string; column: Column }>>();
+  const authenticatedUsers = new Set<string>();
+
+  const notifier: BoardNotifier = {
+    notifyCardChanged: (actorId: string, card: { title: string; column: Column }) => {
+      [...authenticatedUsers]
+        .filter((user) => user !== actorId)
+        .forEach((user) => {
+          const list = notifications.get(user) || [];
+          list.push({ title: card.title, column: card.column });
+          notifications.set(user, list);
+        });
+    }
+  };
+
+  const service = new BoardService(repository, notifier);
+  return { repository, service, notifications, authenticatedUsers };
 };
 
 export const scenario = (name: string, fn: () => void) =>
@@ -30,6 +48,7 @@ export const given = {
   userIsAuthenticated: (userId: string) => {
     ensureContext();
     context!.currentUser = userId;
+    context!.authenticatedUsers.add(userId);
   },
   cardExists: ({ title, column }: { title: string; column: Column }) => {
     const ctx = ensureContext();
@@ -48,17 +67,21 @@ export const when = {
     }
     ctx.service.createCard(ctx.currentUser, { title, column });
   },
-  userMovesCard: (title: string, column: Column) => {
+  userMovesCard: (title: string, column: Column, userId?: string) => {
     const ctx = ensureContext();
-    if (!ctx.currentUser) {
+    const actor = userId ?? ctx.currentUser;
+    if (!actor) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.moveCard(ctx.currentUser, title, column);
+    if (!ctx.authenticatedUsers.has(actor)) {
+      throw new Error(`User ${actor} not authenticated`);
+    }
+    ctx.service.moveCard(actor, title, column);
   }
 };
 
 export const then = {
-  boardShowsCard: (title: string, column: Column) => {
+  boardShowsCard: (title: string, column: Column, _viewer?: string) => {
     const ctx = ensureContext();
     const cards = ctx.service.listCards();
     const found = cards.find(
@@ -66,7 +89,7 @@ export const then = {
     );
     expect(found).toBeDefined();
   },
-  swimlaneShowsCard: (title: string, column: Column) => {
+  swimlaneShowsCard: (title: string, column: Column, _viewer?: string) => {
     const ctx = ensureContext();
     const cards = ctx.service.listCards();
     const found = cards.find(
@@ -78,6 +101,11 @@ export const then = {
     expect(SWIMLANES).toContain(column);
     const expectedTitle = column === 'In Progress' ? 'In Progress' : column;
     expect(title).toBe(expectedTitle);
+  },
+  boardIsNotied: (userId: string) => {
+    const ctx = ensureContext();
+    const list = ctx.notifications.get(userId) || [];
+    expect(list.length).toBeGreaterThan(0);
   },
   changeIsPersisted: () => {
     const ctx = ensureContext();

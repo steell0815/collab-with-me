@@ -12,6 +12,16 @@ export interface BoardRepository {
   save(cards: Card[]): void;
 }
 
+export interface BoardNotifier {
+  notifyCardChanged(actorId: string, card: Card): void;
+}
+
+export class NoopBoardNotifier implements BoardNotifier {
+  notifyCardChanged(): void {
+    // no-op
+  }
+}
+
 export class InMemoryBoardRepository implements BoardRepository {
   private cards: Card[] = [];
 
@@ -25,7 +35,10 @@ export class InMemoryBoardRepository implements BoardRepository {
 }
 
 export class BoardService {
-  constructor(private readonly repository: BoardRepository) {}
+  constructor(
+    private readonly repository: BoardRepository,
+    private readonly notifier: BoardNotifier = new NoopBoardNotifier()
+  ) {}
 
   createCard(userId: string, input: { title: string; column: Column }): Card {
     if (!userId) {
@@ -40,6 +53,7 @@ export class BoardService {
     };
     cards.push(card);
     this.repository.save(cards);
+    this.notifier.notifyCardChanged(userId, card);
     return card;
   }
 
@@ -55,6 +69,7 @@ export class BoardService {
     const updated = { ...card, column: newColumn };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
     this.repository.save(updatedCards);
+    this.notifier.notifyCardChanged(userId, updated);
     return updated;
   }
 
