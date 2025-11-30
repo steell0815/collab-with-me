@@ -221,16 +221,15 @@ cardsEl.addEventListener('click', async (event) => {
   }
   if (target.matches('button[data-delete]')) {
     const cardTitle = target.getAttribute('data-title');
-    const user = userEl.value.trim();
-    if (!cardTitle || !user) {
-      setStatus('User required to delete cards', true);
+    if (!cardTitle || !currentUserId) {
+      setStatus('Login required to delete cards', true);
       return;
     }
     try {
       const res = await fetch('/api/cards', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, title: cardTitle })
+        body: JSON.stringify({ user: currentUserId, title: cardTitle })
       });
       if (!res.ok && res.status !== 204) {
         throw new Error(await res.text());
@@ -249,15 +248,35 @@ const renderCards = (cards) => {
   lanes.forEach((lane) => {
     const laneDiv = document.createElement('div');
     laneDiv.className = 'lane';
+    laneDiv.dataset.column = lane;
     const laneHeader = document.createElement('h3');
     laneHeader.textContent = lane;
     laneDiv.appendChild(laneHeader);
+    laneDiv.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+    laneDiv.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      const cardId = e.dataTransfer?.getData('text/plain');
+      if (!cardId || !currentUserId) return;
+      const card = cards.find((c) => c.id === cardId);
+      if (!card || card.column === lane) return;
+      try {
+        await moveCard(card.title, lane);
+      } catch (err) {
+        setStatus(err.message || 'Error moving card', true);
+      }
+    });
 
     const columnCards = cards.filter((card) => card.column === lane);
     columnCards.forEach((card) => {
       const div = document.createElement('div');
       div.className = 'card';
       div.dataset.cardId = card.id;
+      div.draggable = true;
+      div.addEventListener('dragstart', (e) => {
+        e.dataTransfer?.setData('text/plain', card.id);
+      });
 
       const titleEl = document.createElement('strong');
       titleEl.textContent = card.title;
@@ -383,4 +402,25 @@ if (versionEls.length) {
   versionEls.forEach((el) => {
     el.textContent = `Version: ${appVersion}`;
   });
+}
+
+async function moveCard(title, column) {
+  if (!currentUserId || !title || !column) {
+    setStatus('Login required to move cards', true);
+    return;
+  }
+  try {
+    const res = await fetch('/api/cards/move', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: currentUserId, title, column })
+    });
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+    setStatus(`Moved "${title}" to ${column}`);
+    await fetchCards();
+  } catch (err) {
+    setStatus(err.message || 'Error moving card', true);
+  }
 }
