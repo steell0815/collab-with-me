@@ -1,6 +1,5 @@
 const cardsEl = document.querySelector('#cards');
 const statusEl = document.querySelector('#status');
-const userEl = document.querySelector('#user');
 const titleEl = document.querySelector('#title');
 const textEl = document.querySelector('#text');
 const columnEl = document.querySelector('#column');
@@ -10,6 +9,7 @@ const currentUserEl = document.querySelector('#current-user');
 const loginBtn = document.querySelector('#login-btn');
 const logoutBtn = document.querySelector('#logout-btn');
 const editState = new Map();
+let currentUserId = '';
 
 const setStatus = (text, isError = false) => {
   statusEl.textContent = text;
@@ -35,10 +35,12 @@ const fetchMe = async () => {
     const res = await fetch('/api/me');
     if (!res.ok) throw new Error('not auth');
     const me = await res.json();
+    currentUserId = me.email || me.name || me.sub || '';
     if (currentUserEl) {
-      currentUserEl.textContent = me.email || me.name || me.sub || '';
+      currentUserEl.textContent = currentUserId;
     }
   } catch {
+    currentUserId = '';
     if (currentUserEl) currentUserEl.textContent = 'Guest';
   }
 };
@@ -69,19 +71,22 @@ const connectEvents = () => {
 };
 
 createButton.addEventListener('click', async () => {
-  const user = userEl.value.trim();
   const title = titleEl.value.trim();
   const text = textEl.value;
   const column = columnEl.value;
-  if (!user || !title) {
-    setStatus('User and title are required', true);
+  if (!currentUserId) {
+    setStatus('Login required to create cards', true);
+    return;
+  }
+  if (!title) {
+    setStatus('Title is required', true);
     return;
   }
   try {
     const res = await fetch('/api/cards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user, title, column, text })
+      body: JSON.stringify({ user: currentUserId, title, column, text })
     });
     if (!res.ok) {
       throw new Error(await res.text());
@@ -100,16 +105,15 @@ cardsEl.addEventListener('click', async (event) => {
   if (target.matches('button[data-move]')) {
     const cardTitle = target.getAttribute('data-title');
     const toColumn = target.getAttribute('data-move');
-    const user = userEl.value.trim();
-    if (!cardTitle || !toColumn || !user) {
-      setStatus('User required to move cards', true);
+    if (!currentUserId || !cardTitle || !toColumn) {
+      setStatus('Login required to move cards', true);
       return;
     }
     try {
       const res = await fetch('/api/cards/move', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, title: cardTitle, column: toColumn })
+        body: JSON.stringify({ user: currentUserId, title: cardTitle, column: toColumn })
       });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -122,18 +126,17 @@ cardsEl.addEventListener('click', async (event) => {
   }
   if (target.matches('button[data-save-text]') || target.dataset.saveText === 'true') {
     const cardTitle = target.getAttribute('data-title');
-    const user = userEl.value.trim();
     const textarea = target.parentElement.querySelector('textarea');
     const text = textarea ? textarea.value : '';
-    if (!cardTitle || !user) {
-      setStatus('User required to edit text', true);
+    if (!cardTitle || !currentUserId) {
+      setStatus('Login required to edit text', true);
       return;
     }
     try {
       const res = await fetch('/api/cards/text', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, title: cardTitle, text })
+        body: JSON.stringify({ user: currentUserId, title: cardTitle, text })
       });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -154,14 +157,13 @@ cardsEl.addEventListener('click', async (event) => {
   if (target.matches('button[data-expand-toggle]') || target.dataset.expandToggle === 'true') {
     const cardTitle = target.getAttribute('data-title');
     const cardId = target.getAttribute('data-card-id');
-    const user = userEl.value.trim();
-    if (!cardTitle || !user) return;
+    if (!cardTitle || !currentUserId) return;
     try {
       const expanded = target.textContent === '🙈';
       const res = await fetch('/api/cards/expanded', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, title: cardTitle, expanded })
+        body: JSON.stringify({ user: currentUserId, title: cardTitle, expanded })
       });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -177,7 +179,7 @@ cardsEl.addEventListener('click', async (event) => {
   if (target.matches('button[data-save-details]') || target.dataset.saveDetails === 'true') {
     const cardId = target.getAttribute('data-card-id');
     const oldTitle = target.getAttribute('data-old-title');
-    const user = userEl.value.trim();
+    const user = currentUserId;
     const wrapper = target.parentElement;
     const titleInput = wrapper.querySelector('input[type="text"]');
     const textarea = wrapper.querySelector('textarea');
