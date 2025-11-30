@@ -16,6 +16,10 @@ const setStatus = (text, isError = false) => {
   statusEl.className = isError ? 'error' : 'ok';
 };
 
+const confirmDelete = async (cardTitle) => {
+  return window.confirm(`Delete "${cardTitle}"?`);
+};
+
 if (loginBtn) {
   loginBtn.title = 'Login';
   loginBtn.addEventListener('click', () => {
@@ -225,6 +229,8 @@ cardsEl.addEventListener('click', async (event) => {
       setStatus('Login required to delete cards', true);
       return;
     }
+    const ok = await confirmDelete(cardTitle);
+    if (!ok) return;
     try {
       const res = await fetch('/api/cards', {
         method: 'DELETE',
@@ -312,7 +318,7 @@ const renderCards = (cards) => {
       deleteBtn.dataset.delete = 'true';
       deleteBtn.dataset.title = card.title;
       deleteBtn.className = 'icon-btn danger';
-      deleteBtn.title = 'Delete';
+      deleteBtn.title = 'Delete card';
       deleteBtn.textContent = '✖';
       actions.appendChild(deleteBtn);
 
@@ -368,13 +374,13 @@ const renderCards = (cards) => {
       saveBtn.dataset.cardId = card.id;
       saveBtn.dataset.oldTitle = card.title;
       saveBtn.className = 'icon-btn';
-      saveBtn.title = 'Save';
+      saveBtn.title = 'Save changes';
       saveBtn.textContent = '☁️';
       const cancelBtn = document.createElement('button');
       cancelBtn.dataset.cancelEdit = 'true';
       cancelBtn.dataset.cardId = card.id;
       cancelBtn.className = 'icon-btn';
-      cancelBtn.title = 'Cancel';
+      cancelBtn.title = 'Cancel editing';
       cancelBtn.textContent = '✖';
       editBlock.appendChild(titleInput);
       editBlock.appendChild(textarea);
