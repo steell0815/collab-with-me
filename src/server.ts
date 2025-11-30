@@ -409,19 +409,12 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'PATCH' && url.pathname === '/api/cards/move') {
       const body = await parseBody(req);
-      let title = body.title;
+      const id = body.id as string;
       const column = body.column as Column;
       const user = authUser || body.user;
-      if (typeof title !== 'string' || typeof column !== 'string') {
+      if (typeof id !== 'string' || typeof column !== 'string') {
         res.writeHead(400);
         res.end('Invalid payload');
-        return;
-      }
-      try {
-        title = sanitizeTitle(title);
-      } catch (err: any) {
-        res.writeHead(400);
-        res.end(err?.message || 'Invalid title');
         return;
       }
       if (!isColumn(column)) {
@@ -435,7 +428,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        const card = boardService.moveCard(user, title, column);
+        const card = boardService.moveCard(user, id, column);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
       } catch (err: any) {
@@ -447,19 +440,12 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'PATCH' && url.pathname === '/api/cards/text') {
       const body = await parseBody(req);
-      let title = body.title;
+      const id = body.id as string;
       const text = body.text as string | undefined;
       const user = authUser || body.user;
-      if (typeof title !== 'string') {
+      if (typeof id !== 'string') {
         res.writeHead(400);
         res.end('Invalid payload');
-        return;
-      }
-      try {
-        title = sanitizeTitle(title);
-      } catch (err: any) {
-        res.writeHead(400);
-        res.end(err?.message || 'Invalid title');
         return;
       }
       let safeText: string | undefined;
@@ -476,7 +462,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        const card = boardService.updateText(user, title, safeText);
+        const card = boardService.updateText(user, id, safeText);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
       } catch (err: any) {
@@ -488,19 +474,12 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'PATCH' && url.pathname === '/api/cards/expanded') {
       const body = await parseBody(req);
-      let title = body.title;
+      const id = body.id as string;
       const expanded = body.expanded;
       const user = authUser || body.user;
-      if (typeof title !== 'string' || typeof expanded !== 'boolean') {
+      if (typeof id !== 'string' || typeof expanded !== 'boolean') {
         res.writeHead(400);
         res.end('Invalid payload');
-        return;
-      }
-      try {
-        title = sanitizeTitle(title);
-      } catch (err: any) {
-        res.writeHead(400);
-        res.end(err?.message || 'Invalid title');
         return;
       }
       if (typeof user !== 'string' || user.trim() === '') {
@@ -509,7 +488,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        const card = boardService.updateExpanded(user, title, expanded);
+        const card = boardService.updateExpanded(user, id, expanded);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
       } catch (err: any) {
@@ -521,16 +500,15 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'PATCH' && url.pathname === '/api/cards/title') {
       const body = await parseBody(req);
-      let oldTitle = body.oldTitle;
+      const id = body.id as string;
       let newTitle = body.newTitle;
       const user = authUser || body.user;
-      if (typeof oldTitle !== 'string' || typeof newTitle !== 'string') {
+      if (typeof id !== 'string' || typeof newTitle !== 'string') {
         res.writeHead(400);
         res.end('Invalid payload');
         return;
       }
       try {
-        oldTitle = sanitizeTitle(oldTitle);
         newTitle = sanitizeTitle(newTitle);
       } catch (err: any) {
         res.writeHead(400);
@@ -543,7 +521,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        const card = boardService.updateTitle(user, oldTitle, newTitle);
+        const card = boardService.updateTitle(user, id, newTitle);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
       } catch (err: any) {
@@ -555,18 +533,11 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'DELETE' && url.pathname === '/api/cards') {
       const body = await parseBody(req);
-      let title = body.title;
+      const id = body.id as string;
       const user = authUser || body.user;
-      if (typeof title !== 'string') {
+      if (typeof id !== 'string') {
         res.writeHead(400);
-        res.end('Title required');
-        return;
-      }
-      try {
-        title = sanitizeTitle(title);
-      } catch (err: any) {
-        res.writeHead(400);
-        res.end(err?.message || 'Invalid title');
+        res.end('Card id required');
         return;
       }
       if (typeof user !== 'string' || user.trim() === '') {
@@ -575,7 +546,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        boardService.deleteCard(user, title);
+        boardService.deleteCard(user, id);
         res.writeHead(204);
         res.end();
       } catch (err: any) {

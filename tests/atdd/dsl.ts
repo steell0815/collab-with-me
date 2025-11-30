@@ -96,7 +96,8 @@ export const when = {
     if (!ctx.currentUser) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.createCard(ctx.currentUser, { title, column, text });
+    const card = ctx.service.createCard(ctx.currentUser, { title, column, text });
+    return card.id;
   },
   userMovesCard: (title: string, column: Column, userId?: string) => {
     const ctx = ensureContext();
@@ -107,7 +108,8 @@ export const when = {
     if (!ctx.authenticatedUsers.has(actor)) {
       throw new Error(`User ${actor} not authenticated`);
     }
-    ctx.service.moveCard(actor, title, column);
+    const id = resolveId(title);
+    ctx.service.moveCard(actor, id, column);
   },
   userChangesText: ({
     title,
@@ -121,7 +123,8 @@ export const when = {
     if (!actor) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.updateText(actor, title, text);
+    const id = resolveId(title);
+    ctx.service.updateText(actor, id, text);
   },
   expandCardText: ({ title }: { title: string }) => {
     const ctx = ensureContext();
@@ -129,7 +132,8 @@ export const when = {
     if (!actor) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.updateExpanded(actor, title, true);
+    const id = resolveId(title);
+    ctx.service.updateExpanded(actor, id, true);
   },
   collapseCardText: ({ title }: { title: string }) => {
     const ctx = ensureContext();
@@ -137,7 +141,8 @@ export const when = {
     if (!actor) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.updateExpanded(actor, title, false);
+    const id = resolveId(title);
+    ctx.service.updateExpanded(actor, id, false);
   },
   userChangesTitle: ({
     oldTitle,
@@ -151,7 +156,8 @@ export const when = {
     if (!actor) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.updateTitle(actor, oldTitle, newTitle);
+    const id = resolveId(oldTitle);
+    ctx.service.updateTitle(actor, id, newTitle);
   },
   systemRestarts: () => {
     const ctx = ensureContext();
@@ -168,7 +174,8 @@ export const when = {
     if (!ctx.authenticatedUsers.has(actor)) {
       throw new Error(`User ${actor} not authenticated`);
     }
-    ctx.service.deleteCard(actor, title);
+    const id = resolveId(title);
+    ctx.service.deleteCard(actor, id);
   }
 };
 
@@ -229,4 +236,13 @@ const ensureContext = (): TestContext => {
     throw new Error('Test context not initialized');
   }
   return context;
+};
+
+const resolveId = (title: string): string => {
+  const ctx = ensureContext();
+  const found = ctx.service.listCards().find((c) => c.title === title);
+  if (!found) {
+    throw new Error(`Card with title '${title}' not found`);
+  }
+  return found.id;
 };

@@ -86,15 +86,14 @@ export class BoardService {
     return card;
   }
 
-  moveCard(userId: string, title: string, newColumn: Column): Card {
+  moveCard(userId: string, id: string, newColumn: Column): Card {
     if (!userId) {
       throw new Error('User must be authenticated to move a card');
     }
-    const safeTitle = sanitizeTitle(title);
     const cards = this.repository.load();
-    const card = cards.find((c) => c.title === safeTitle);
+    const card = cards.find((c) => c.id === id);
     if (!card) {
-      throw new Error(`Card with title '${safeTitle}' not found`);
+      throw new Error(`Card with id '${id}' not found`);
     }
     const updated = { ...card, column: newColumn };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
@@ -103,16 +102,15 @@ export class BoardService {
     return updated;
   }
 
-  updateText(userId: string, title: string, text?: string): Card {
+  updateText(userId: string, id: string, text?: string): Card {
     if (!userId) {
       throw new Error('User must be authenticated to change text');
     }
-    const safeTitle = sanitizeTitle(title);
     const safeText = sanitizeText(text);
     const cards = this.repository.load();
-    const card = cards.find((c) => c.title === safeTitle);
+    const card = cards.find((c) => c.id === id);
     if (!card) {
-      throw new Error(`Card with title '${safeTitle}' not found`);
+      throw new Error(`Card with id '${id}' not found`);
     }
     const updated = { ...card, text: safeText };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
@@ -121,15 +119,14 @@ export class BoardService {
     return updated;
   }
 
-  updateExpanded(userId: string, title: string, expanded: boolean): Card {
+  updateExpanded(userId: string, id: string, expanded: boolean): Card {
     if (!userId) {
       throw new Error('User must be authenticated to change expansion');
     }
-    const safeTitle = sanitizeTitle(title);
     const cards = this.repository.load();
-    const card = cards.find((c) => c.title === safeTitle);
+    const card = cards.find((c) => c.id === id);
     if (!card) {
-      throw new Error(`Card with title '${safeTitle}' not found`);
+      throw new Error(`Card with id '${id}' not found`);
     }
     const updated = { ...card, expanded };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
@@ -138,16 +135,15 @@ export class BoardService {
     return updated;
   }
 
-  updateTitle(userId: string, oldTitle: string, newTitle: string): Card {
+  updateTitle(userId: string, id: string, newTitle: string): Card {
     if (!userId) {
       throw new Error('User must be authenticated to change title');
     }
-    const safeOld = sanitizeTitle(oldTitle);
     const safeNew = sanitizeTitle(newTitle);
     const cards = this.repository.load();
-    const card = cards.find((c) => c.title === safeOld);
+    const card = cards.find((c) => c.id === id);
     if (!card) {
-      throw new Error(`Card with title '${safeOld}' not found`);
+      throw new Error(`Card with id '${id}' not found`);
     }
     const updated = { ...card, title: safeNew };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
@@ -156,15 +152,14 @@ export class BoardService {
     return updated;
   }
 
-  deleteCard(userId: string, title: string): void {
+  deleteCard(userId: string, id: string): void {
     if (!userId) {
       throw new Error('User must be authenticated to delete a card');
     }
-    const safeTitle = sanitizeTitle(title);
     const cards = this.repository.load();
-    const next = cards.filter((c) => c.title !== safeTitle);
+    const next = cards.filter((c) => c.id !== id);
     if (next.length === cards.length) {
-      throw new Error(`Card with title '${safeTitle}' not found`);
+      throw new Error(`Card with id '${id}' not found`);
     }
     this.repository.save(next);
     this.notifier.notifyBoardUpdated(userId, next);

@@ -11,6 +11,7 @@ const logoutBtn = document.querySelector('#logout-btn');
 const editState = new Map();
 let currentUserId = ''; // stable identifier (prefer sub)
 let currentUserDisplay = ''; // human-readable (prefer name for cards)
+let cardsCache = [];
 
 const setStatus = (text, isError = false) => {
   statusEl.textContent = text;
@@ -56,6 +57,7 @@ const fetchMe = async () => {
 const fetchCards = async () => {
   const res = await fetch('/api/cards');
   const data = await res.json();
+  cardsCache = data;
   renderCards(data);
 };
 
@@ -116,9 +118,10 @@ createButton.addEventListener('click', async () => {
 cardsEl.addEventListener('click', async (event) => {
   const target = event.target;
   if (target.matches('button[data-move]')) {
-    const cardTitle = target.getAttribute('data-title');
+    const cardId = target.getAttribute('data-id');
+    const cardTitle = target.getAttribute('data-title') || '';
     const toColumn = target.getAttribute('data-move');
-    if (!currentUserId || !cardTitle || !toColumn) {
+    if (!currentUserId || !cardId || !toColumn) {
       setStatus('Login required to move cards', true);
       return;
     }
@@ -126,7 +129,7 @@ cardsEl.addEventListener('click', async (event) => {
       const res = await fetch('/api/cards/move', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: currentUserId, title: cardTitle, column: toColumn })
+        body: JSON.stringify({ user: currentUserId, id: cardId, column: toColumn })
       });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -138,10 +141,11 @@ cardsEl.addEventListener('click', async (event) => {
     }
   }
   if (target.matches('button[data-save-text]') || target.dataset.saveText === 'true') {
-    const cardTitle = target.getAttribute('data-title');
+    const cardId = target.getAttribute('data-card-id');
+    const cardTitle = target.getAttribute('data-title') || '';
     const textarea = target.parentElement.querySelector('textarea');
     const text = textarea ? textarea.value : '';
-    if (!cardTitle || !currentUserId) {
+    if (!cardId || !currentUserId) {
       setStatus('Login required to edit text', true);
       return;
     }
@@ -149,7 +153,7 @@ cardsEl.addEventListener('click', async (event) => {
       const res = await fetch('/api/cards/text', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: currentUserId, title: cardTitle, text })
+        body: JSON.stringify({ user: currentUserId, id: cardId, text })
       });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -168,15 +172,15 @@ cardsEl.addEventListener('click', async (event) => {
     await fetchCards();
   }
   if (target.matches('button[data-expand-toggle]') || target.dataset.expandToggle === 'true') {
-    const cardTitle = target.getAttribute('data-title');
     const cardId = target.getAttribute('data-card-id');
-    if (!cardTitle || !currentUserId) return;
+    const cardTitle = target.getAttribute('data-title') || '';
+    if (!cardId || !currentUserId) return;
     try {
       const expanded = target.dataset.expanded !== 'true';
       const res = await fetch('/api/cards/expanded', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: currentUserId, title: cardTitle, expanded })
+        body: JSON.stringify({ user: currentUserId, id: cardId, expanded })
       });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -191,14 +195,13 @@ cardsEl.addEventListener('click', async (event) => {
   }
   if (target.matches('button[data-save-details]') || target.dataset.saveDetails === 'true') {
     const cardId = target.getAttribute('data-card-id');
-    const oldTitle = target.getAttribute('data-old-title');
     const user = currentUserId;
     const wrapper = target.parentElement;
     const titleInput = wrapper.querySelector('input[type="text"]');
     const textarea = wrapper.querySelector('textarea');
     const newTitle = titleInput ? titleInput.value.trim() : '';
     const text = textarea ? textarea.value : '';
-    if (!cardId || !oldTitle || !newTitle || !user) {
+    if (!cardId || !newTitle || !user) {
       setStatus('User and title required to edit details', true);
       return;
     }
@@ -206,7 +209,7 @@ cardsEl.addEventListener('click', async (event) => {
       const resTitle = await fetch('/api/cards/title', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, oldTitle, newTitle })
+        body: JSON.stringify({ user, id: cardId, newTitle })
       });
       if (!resTitle.ok) {
         throw new Error(await resTitle.text());
@@ -214,7 +217,7 @@ cardsEl.addEventListener('click', async (event) => {
       const resText = await fetch('/api/cards/text', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, title: newTitle, text })
+        body: JSON.stringify({ user, id: cardId, text })
       });
       if (!resText.ok) {
         throw new Error(await resText.text());
@@ -233,8 +236,9 @@ cardsEl.addEventListener('click', async (event) => {
     await fetchCards();
   }
   if (target.matches('button[data-delete]')) {
-    const cardTitle = target.getAttribute('data-title');
-    if (!cardTitle || !currentUserId) {
+    const cardId = target.getAttribute('data-id');
+    const cardTitle = target.getAttribute('data-title') || '';
+    if (!cardId || !currentUserId) {
       setStatus('Login required to delete cards', true);
       return;
     }
@@ -244,7 +248,7 @@ cardsEl.addEventListener('click', async (event) => {
       const res = await fetch('/api/cards', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: currentUserId, title: cardTitle })
+        body: JSON.stringify({ user: currentUserId, id: cardId })
       });
       if (!res.ok && res.status !== 204) {
         throw new Error(await res.text());
@@ -277,7 +281,7 @@ const renderCards = (cards) => {
       const card = cards.find((c) => c.id === cardId);
       if (!card || card.column === lane) return;
       try {
-        await moveCard(card.title, lane);
+        await moveCard(cardId, lane);
       } catch (err) {
         setStatus(err.message || 'Error moving card', true);
       }
@@ -309,6 +313,7 @@ const renderCards = (cards) => {
         .forEach((col) => {
           const btn = document.createElement('button');
           btn.dataset.move = col;
+          btn.dataset.id = card.id;
           btn.dataset.title = card.title;
           btn.className = 'icon-btn';
           btn.title = `Move to ${col}`;
@@ -325,6 +330,7 @@ const renderCards = (cards) => {
 
       const deleteBtn = document.createElement('button');
       deleteBtn.dataset.delete = 'true';
+      deleteBtn.dataset.id = card.id;
       deleteBtn.dataset.title = card.title;
       deleteBtn.className = 'icon-btn danger';
       deleteBtn.title = 'Delete card';
@@ -430,8 +436,8 @@ if (versionEls.length) {
   }
 }
 
-async function moveCard(title, column) {
-  if (!currentUserId || !title || !column) {
+async function moveCard(cardId, column) {
+  if (!currentUserId || !cardId || !column) {
     setStatus('Login required to move cards', true);
     return;
   }
@@ -439,12 +445,12 @@ async function moveCard(title, column) {
     const res = await fetch('/api/cards/move', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: currentUserId, title, column })
+      body: JSON.stringify({ user: currentUserId, id: cardId, column })
     });
     if (!res.ok) {
       throw new Error(await res.text());
     }
-    setStatus(`Moved "${title}" to ${column}`);
+    setStatus(`Moved card to ${column}`);
     await fetchCards();
   } catch (err) {
     setStatus(err.message || 'Error moving card', true);
