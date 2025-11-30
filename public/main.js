@@ -159,7 +159,7 @@ cardsEl.addEventListener('click', async (event) => {
     const cardId = target.getAttribute('data-card-id');
     if (!cardTitle || !currentUserId) return;
     try {
-      const expanded = target.textContent === '🙈';
+      const expanded = target.dataset.expanded !== 'true';
       const res = await fetch('/api/cards/expanded', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -299,7 +299,7 @@ const renderCards = (cards) => {
           btn.title = `Move to ${col}`;
           btn.textContent =
             col === 'Todo'
-              ? '☐'
+              ? '🗒️'
               : col === 'In Progress'
                 ? '⚙️'
                 : col === 'Done'
@@ -334,8 +334,9 @@ const renderCards = (cards) => {
       expandToggle.dataset.cardId = card.id;
       expandToggle.dataset.title = card.title;
       expandToggle.className = 'icon-btn';
+      expandToggle.dataset.expanded = String(!!card.expanded);
       expandToggle.title = card.expanded ? 'Hide text' : 'Show text';
-      expandToggle.textContent = card.expanded ? '👁' : '🙈';
+      expandToggle.textContent = card.expanded ? '▾' : '▸';
       viewActions.appendChild(expandToggle);
 
       const editToggle = document.createElement('button');
