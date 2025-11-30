@@ -409,6 +409,16 @@ if (versionEls.length) {
   versionEls.forEach((el) => {
     el.textContent = `Version: ${appVersion}`;
   });
+  if (appVersion === '0.0.0-local') {
+    fetch('/version.txt')
+      .then((res) => (res.ok ? res.text() : Promise.reject()))
+      .then((txt) => {
+        versionEls.forEach((el) => {
+          el.textContent = `Version: ${txt.trim() || appVersion}`;
+        });
+      })
+      .catch(() => {});
+  }
 }
 
 async function moveCard(title, column) {

@@ -25,10 +25,18 @@ fi
 
 [ -n "${BUILD:-}" ] || error "could not determine BUILD number (git or CI_BUILD_NUMBER required)"
 
+SHORT_HASH="$(git rev-parse --short=6 HEAD 2>/dev/null || true)"
+
 APP_VERSION="${MAJOR_MINOR}.${BUILD}"
+if [ -n "$SHORT_HASH" ]; then
+  APP_VERSION="${APP_VERSION}-${SHORT_HASH}"
+fi
 
 if [ -n "${GITHUB_ENV:-}" ]; then
   echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
 fi
+
+mkdir -p "$ROOT_DIR/dist" 2>/dev/null || true
+echo "$APP_VERSION" > "$ROOT_DIR/dist/version.txt" 2>/dev/null || true
 
 echo "$APP_VERSION"

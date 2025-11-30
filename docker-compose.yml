@@ -17,8 +17,10 @@ services:
       OIDC_REDIRECT_URI: http://localhost:5173/oidc/callback
       SESSION_SECRET: M02zVptPY0jyeFZcrwr6aLlXvz12pga6
       NODE_TLS_REJECT_UNAUTHORIZED: '0'
+      APP_VERSION: ${APP_VERSION:-0.0.0-local}
     volumes:
       - app-data:/data
+      - ./dist/version.txt:/app/dist/version.txt:ro
     restart: unless-stopped
     depends_on:
       - keycloak
@@ -47,4 +49,3 @@ services:
 volumes:
   app-data:
     name: collab-with-me-data
-
