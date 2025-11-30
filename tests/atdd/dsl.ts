@@ -63,12 +63,22 @@ export const given = {
     context!.currentUser = userId;
     context!.authenticatedUsers.add(userId);
   },
-  cardExists: ({ title, column, text }: { title: string; column: Column; text?: string }) => {
+  cardExists: ({
+    title,
+    column,
+    text,
+    expanded
+  }: {
+    title: string;
+    column: Column;
+    text?: string;
+    expanded?: boolean;
+  }) => {
     const ctx = ensureContext();
     if (!ctx.currentUser) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.createCard(ctx.currentUser, { title, column, text });
+    ctx.service.createCard(ctx.currentUser, { title, column, text, expanded });
   }
 };
 
@@ -113,6 +123,22 @@ export const when = {
     }
     ctx.service.updateText(actor, title, text);
   },
+  expandCardText: ({ title }: { title: string }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    ctx.service.updateExpanded(actor, title, true);
+  },
+  collapseCardText: ({ title }: { title: string }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    ctx.service.updateExpanded(actor, title, false);
+  },
   userChangesTitle: ({
     oldTitle,
     newTitle
@@ -147,7 +173,7 @@ export const when = {
 };
 
 export const then = {
-  boardShowsCard: (title: string, textOrColumn: string | Column, columnMaybe?: Column) => {
+  boardShowsCard: (title: string, textOrColumn: string | Column, columnMaybe?: Column, expanded?: boolean) => {
     const ctx = ensureContext();
     const cards = ctx.service.listCards();
     let found;
@@ -158,7 +184,8 @@ export const then = {
         (card) =>
           card.title === title &&
           card.column === column &&
-          (text === undefined || (card.text ?? '') === text)
+          (text === undefined || (card.text ?? '') === text) &&
+          (expanded === undefined || card.expanded === expanded)
       );
     } else {
       const column = textOrColumn as Column;

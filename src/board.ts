@@ -8,6 +8,7 @@ export type Card = {
   title: string;
   column: Column;
   text?: string;
+  expanded: boolean;
   createdBy: string;
 };
 
@@ -64,7 +65,7 @@ export class BoardService {
     private readonly notifier: BoardNotifier = new NoopBoardNotifier()
   ) {}
 
-  createCard(userId: string, input: { title: string; column: Column; text?: string }): Card {
+  createCard(userId: string, input: { title: string; column: Column; text?: string; expanded?: boolean }): Card {
     if (!userId) {
       throw new Error('User must be authenticated to create a card');
     }
@@ -76,6 +77,7 @@ export class BoardService {
       title: safeTitle,
       column: input.column,
       text: safeText,
+      expanded: input.expanded ?? true,
       createdBy: userId
     };
     cards.push(card);
@@ -113,6 +115,23 @@ export class BoardService {
       throw new Error(`Card with title '${safeTitle}' not found`);
     }
     const updated = { ...card, text: safeText };
+    const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
+    this.repository.save(updatedCards);
+    this.notifier.notifyBoardUpdated(userId, updatedCards);
+    return updated;
+  }
+
+  updateExpanded(userId: string, title: string, expanded: boolean): Card {
+    if (!userId) {
+      throw new Error('User must be authenticated to change expansion');
+    }
+    const safeTitle = sanitizeTitle(title);
+    const cards = this.repository.load();
+    const card = cards.find((c) => c.title === safeTitle);
+    if (!card) {
+      throw new Error(`Card with title '${safeTitle}' not found`);
+    }
+    const updated = { ...card, expanded };
     const updatedCards = cards.map((c) => (c.id === card.id ? updated : c));
     this.repository.save(updatedCards);
     this.notifier.notifyBoardUpdated(userId, updatedCards);

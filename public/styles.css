@@ -173,6 +173,12 @@ button:hover {
   gap: 0.35rem;
 }
 
+.view-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
 .hidden {
   display: none;
 }

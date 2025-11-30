@@ -119,6 +119,29 @@ cardsEl.addEventListener('click', async (event) => {
     editState.set(cardId, next);
     await fetchCards();
   }
+  if (target.matches('button[data-expand-toggle]') || target.dataset.expandToggle === 'true') {
+    const cardTitle = target.getAttribute('data-title');
+    const cardId = target.getAttribute('data-card-id');
+    const user = userEl.value.trim();
+    if (!cardTitle || !user) return;
+    try {
+      const expanded = target.textContent === '🙈';
+      const res = await fetch('/api/cards/expanded', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, title: cardTitle, expanded })
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      if (cardId) {
+        editState.set(cardId, false);
+      }
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error toggling text', true);
+    }
+  }
   if (target.matches('button[data-save-details]') || target.dataset.saveDetails === 'true') {
     const cardId = target.getAttribute('data-card-id');
     const oldTitle = target.getAttribute('data-old-title');
@@ -244,19 +267,33 @@ const renderCards = (cards) => {
       viewBlock.className = 'view-block';
       viewBlock.appendChild(titleEl);
       viewBlock.appendChild(userEl);
-      if (card.text) {
+      if (card.text && card.expanded) {
         const textElView = document.createElement('p');
         textElView.textContent = card.text;
         textElView.className = 'card-text';
         viewBlock.appendChild(textElView);
       }
+      const viewActions = document.createElement('div');
+      viewActions.className = 'view-actions';
+
+      const expandToggle = document.createElement('button');
+      expandToggle.dataset.expandToggle = 'true';
+      expandToggle.dataset.cardId = card.id;
+      expandToggle.dataset.title = card.title;
+      expandToggle.className = 'icon-btn';
+      expandToggle.title = card.expanded ? 'Hide text' : 'Show text';
+      expandToggle.textContent = card.expanded ? '👁' : '🙈';
+      viewActions.appendChild(expandToggle);
+
       const editToggle = document.createElement('button');
       editToggle.dataset.editToggle = 'true';
       editToggle.dataset.cardId = card.id;
       editToggle.className = 'icon-btn';
       editToggle.title = editState.get(card.id) ? 'View' : 'Edit';
       editToggle.textContent = editState.get(card.id) ? '✖' : '✏️';
-      viewBlock.appendChild(editToggle);
+      viewActions.appendChild(editToggle);
+
+      viewBlock.appendChild(viewActions);
 
       const editBlock = document.createElement('div');
       editBlock.className = 'edit-block';

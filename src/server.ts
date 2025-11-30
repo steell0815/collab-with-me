@@ -104,6 +104,7 @@ const server = createServer(async (req, res) => {
       let title = body.title;
       const column = body.column as Column;
       const text = body.text as string | undefined;
+      const expanded = body.expanded;
       const user = body.user;
       if (typeof title !== 'string' || typeof column !== 'string') {
         res.writeHead(400);
@@ -211,6 +212,39 @@ const server = createServer(async (req, res) => {
       }
       try {
         const card = boardService.updateText(user, title, safeText);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/expanded') {
+      const body = await parseBody(req);
+      let title = body.title;
+      const expanded = body.expanded;
+      const user = body.user;
+      if (typeof title !== 'string' || typeof expanded !== 'boolean') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      try {
+        title = sanitizeTitle(title);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message || 'Invalid title');
+        return;
+      }
+      if (typeof user !== 'string' || user.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.updateExpanded(user, title, expanded);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
       } catch (err: any) {
