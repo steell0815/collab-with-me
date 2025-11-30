@@ -5,10 +5,42 @@ const titleEl = document.querySelector('#title');
 const textEl = document.querySelector('#text');
 const columnEl = document.querySelector('#column');
 const createButton = document.querySelector('#create');
+const versionEls = Array.from(document.querySelectorAll('.version-display'));
+const currentUserEl = document.querySelector('#current-user');
+const loginBtn = document.querySelector('#login-btn');
+const logoutBtn = document.querySelector('#logout-btn');
+const editState = new Map();
 
 const setStatus = (text, isError = false) => {
   statusEl.textContent = text;
   statusEl.className = isError ? 'error' : 'ok';
+};
+
+if (loginBtn) {
+  loginBtn.title = 'Login';
+  loginBtn.addEventListener('click', () => {
+    window.location.href = '/login';
+  });
+}
+if (logoutBtn) {
+  logoutBtn.title = 'Logout';
+  logoutBtn.addEventListener('click', async () => {
+    await fetch('/logout', { method: 'POST' });
+    window.location.href = '/';
+  });
+}
+
+const fetchMe = async () => {
+  try {
+    const res = await fetch('/api/me');
+    if (!res.ok) throw new Error('not auth');
+    const me = await res.json();
+    if (currentUserEl) {
+      currentUserEl.textContent = me.email || me.name || me.sub || '';
+    }
+  } catch {
+    if (currentUserEl) currentUserEl.textContent = 'Guest';
+  }
 };
 
 const fetchCards = async () => {
@@ -342,11 +374,11 @@ fetchCards().catch((err) => {
 });
 
 connectEvents();
+fetchMe();
 
-const versionEl = document.querySelector('#version');
 const appVersion = import.meta.env?.APP_VERSION || window.APP_VERSION || '0.0.0-local';
-if (versionEl) {
-  versionEl.textContent = `Version: ${appVersion}`;
+if (versionEls.length) {
+  versionEls.forEach((el) => {
+    el.textContent = `Version: ${appVersion}`;
+  });
 }
-
-const editState = new Map();

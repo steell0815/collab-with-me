@@ -4,7 +4,12 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "tsx": "^4.7.0"
+    "cookie": "^1.1.1",
+    "jose": "^6.1.2",
+    "oauth4webapi": "^3.8.3",
+    "openid-client": "^6.8.1",
+    "tsx": "^4.7.0",
+    "uuid": "^9.0.1"
   },
   "scripts": {
     "dev": "tsx src/server.ts",
@@ -17,6 +22,6 @@
   },
   "devDependencies": {
     "typescript": "^5.4.5",
-    "vitest": "^1.6.1"
+    "vitest": "^4.0.14"
   }
 }

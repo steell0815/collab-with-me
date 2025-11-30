@@ -18,7 +18,12 @@
           <p>Manual feedback arena for creating and moving cards.</p>
         </div>
       </div>
-      <div class="version-badge" id="version"></div>
+      <div class="version-badge version-display" id="version"></div>
+      <div class="auth">
+        <span id="current-user"></span>
+        <button id="login-btn" class="icon-btn">⇪</button>
+        <button id="logout-btn" class="icon-btn">⇩</button>
+      </div>
     </header>
 
     <main>
@@ -54,7 +59,7 @@
       </section>
     </main>
     <footer>
-      <span id="version"></span>
+      <span class="version-display"></span>
     </footer>
 
     <script src="./main.js" type="module"></script>

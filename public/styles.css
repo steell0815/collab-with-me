@@ -50,6 +50,17 @@ header p {
   color: #9ed0ff;
 }
 
+.auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.auth span {
+  font-size: 0.95rem;
+  color: #cfe9ff;
+}
+
 main {
   padding: 1.5rem;
   display: grid;

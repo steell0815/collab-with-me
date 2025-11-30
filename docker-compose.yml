@@ -5,14 +5,46 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5173:5173"
+    extra_hosts:
+      - "localhost:host-gateway"
     environment:
       PORT: 5173
       STATIC_DIR: /app/dist
       BOARD_DATA_FILE: /data/board.json
+      OIDC_ISSUER: https://localhost:8443/realms/collab
+      OIDC_CLIENT_ID: collab-client
+      OIDC_CLIENT_SECRET: M02zVptPY0jyeFZcrwr6aLlXvz12pga6
+      OIDC_REDIRECT_URI: http://localhost:5173/oidc/callback
+      SESSION_SECRET: M02zVptPY0jyeFZcrwr6aLlXvz12pga6
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
     volumes:
       - app-data:/data
     restart: unless-stopped
+    depends_on:
+      - keycloak
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.7
+    command: >
+      start-dev
+      --https-port=8443
+      --https-certificate-file=/certs/cert.pem
+      --https-certificate-key-file=/certs/key.pem
+      --hostname-strict=false
+      --hostname-strict-https=false
+      --hostname=localhost
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
+      KC_HOSTNAME_STRICT: 'false'
+    ports:
+      - "8443:8443"
+    restart: unless-stopped
+    volumes:
+      - ./certs:/certs:ro
 
 volumes:
   app-data:
     name: collab-with-me-data
+
