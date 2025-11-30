@@ -9,7 +9,7 @@
     "oauth4webapi": "^3.8.3",
     "openid-client": "^6.8.1",
     "tsx": "^4.7.0",
-    "uuid": "^9.0.1"
+    "uuid": "^13.0.0"
   },
   "scripts": {
     "dev": "tsx src/server.ts",
