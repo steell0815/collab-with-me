@@ -9,7 +9,8 @@ const currentUserEl = document.querySelector('#current-user');
 const loginBtn = document.querySelector('#login-btn');
 const logoutBtn = document.querySelector('#logout-btn');
 const editState = new Map();
-let currentUserId = '';
+let currentUserId = ''; // stable identifier (prefer sub)
+let currentUserDisplay = ''; // human-readable (prefer name for cards)
 
 const setStatus = (text, isError = false) => {
   statusEl.textContent = text;
@@ -39,12 +40,15 @@ const fetchMe = async () => {
     const res = await fetch('/api/me');
     if (!res.ok) throw new Error('not auth');
     const me = await res.json();
-    currentUserId = me.email || me.name || me.sub || '';
+    currentUserId = me.sub || me.email || me.name || '';
+    currentUserDisplay = me.name || me.email || me.sub || '';
+    const headerDisplay = me.email || me.name || me.sub || '';
     if (currentUserEl) {
-      currentUserEl.textContent = currentUserId;
+      currentUserEl.textContent = headerDisplay;
     }
   } catch {
     currentUserId = '';
+    currentUserDisplay = '';
     if (currentUserEl) currentUserEl.textContent = 'Guest';
   }
 };
@@ -90,7 +94,12 @@ createButton.addEventListener('click', async () => {
     const res = await fetch('/api/cards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: currentUserId, title, column, text })
+      body: JSON.stringify({
+        user: currentUserDisplay || currentUserId,
+        title,
+        column,
+        text
+      })
     });
     if (!res.ok) {
       throw new Error(await res.text());

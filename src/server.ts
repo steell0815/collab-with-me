@@ -364,6 +364,8 @@ const server = createServer(async (req, res) => {
       const text = body.text as string | undefined;
       const expanded = body.expanded;
       const user = authUser || body.user;
+      const userDisplay =
+        session?.name || session?.email || session?.sub || (typeof body.user === 'string' ? body.user : '');
       if (typeof title !== 'string' || typeof column !== 'string') {
         res.writeHead(400);
         res.end('Invalid payload');
@@ -394,7 +396,7 @@ const server = createServer(async (req, res) => {
         res.end('User required');
         return;
       }
-      const card = boardService.createCard(user, {
+      const card = boardService.createCard(userDisplay || user, {
         title,
         column,
         text: safeText,
