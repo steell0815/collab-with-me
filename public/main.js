@@ -219,14 +219,25 @@ const renderCards = (cards) => {
           const btn = document.createElement('button');
           btn.dataset.move = col;
           btn.dataset.title = card.title;
-          btn.textContent = `Move to ${col}`;
+          btn.className = 'icon-btn';
+          btn.title = `Move to ${col}`;
+          btn.textContent =
+            col === 'Todo'
+              ? '☐'
+              : col === 'In Progress'
+                ? '⚙️'
+                : col === 'Done'
+                  ? '☑️'
+                  : '🗑';
           actions.appendChild(btn);
         });
 
       const deleteBtn = document.createElement('button');
       deleteBtn.dataset.delete = 'true';
       deleteBtn.dataset.title = card.title;
-      deleteBtn.textContent = 'Delete';
+      deleteBtn.className = 'icon-btn danger';
+      deleteBtn.title = 'Delete';
+      deleteBtn.textContent = '✖';
       actions.appendChild(deleteBtn);
 
       const viewBlock = document.createElement('div');
@@ -242,7 +253,9 @@ const renderCards = (cards) => {
       const editToggle = document.createElement('button');
       editToggle.dataset.editToggle = 'true';
       editToggle.dataset.cardId = card.id;
-      editToggle.textContent = editState.get(card.id) ? 'View' : 'Edit';
+      editToggle.className = 'icon-btn';
+      editToggle.title = editState.get(card.id) ? 'View' : 'Edit';
+      editToggle.textContent = editState.get(card.id) ? '✖' : '✏️';
       viewBlock.appendChild(editToggle);
 
       const editBlock = document.createElement('div');
@@ -263,11 +276,15 @@ const renderCards = (cards) => {
       saveBtn.dataset.saveDetails = 'true';
       saveBtn.dataset.cardId = card.id;
       saveBtn.dataset.oldTitle = card.title;
-      saveBtn.textContent = 'Save';
+      saveBtn.className = 'icon-btn';
+      saveBtn.title = 'Save';
+      saveBtn.textContent = '☁️';
       const cancelBtn = document.createElement('button');
       cancelBtn.dataset.cancelEdit = 'true';
       cancelBtn.dataset.cardId = card.id;
-      cancelBtn.textContent = 'Cancel';
+      cancelBtn.className = 'icon-btn';
+      cancelBtn.title = 'Cancel';
+      cancelBtn.textContent = '✖';
       editBlock.appendChild(titleInput);
       editBlock.appendChild(textarea);
       editBlock.appendChild(saveBtn);
