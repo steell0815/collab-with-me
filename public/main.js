@@ -229,13 +229,6 @@ const renderCards = (cards) => {
       deleteBtn.textContent = 'Delete';
       actions.appendChild(deleteBtn);
 
-      if (card.text) {
-        const textEl = document.createElement('p');
-        textEl.textContent = card.text;
-        textEl.className = 'card-text';
-        div.appendChild(textEl);
-      }
-
       const viewBlock = document.createElement('div');
       viewBlock.className = 'view-block';
       viewBlock.appendChild(titleEl);
