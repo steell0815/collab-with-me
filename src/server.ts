@@ -1,7 +1,7 @@
 import { createReadStream, existsSync } from 'fs';
 import { createServer } from 'http';
 import crypto from 'crypto';
-import { extname, join } from 'path';
+import { extname, join, dirname as pathDirname } from 'path';
 import { URL } from 'url';
 import { createRequire } from 'module';
 import { parse as parseCookie, serialize as serializeCookie } from 'cookie';
@@ -16,6 +16,7 @@ import {
   sanitizeText
 } from './board';
 import { SSEHub } from './sseHub';
+import { UsageLogger } from './usageLogger';
 
 type Session = { sub: string; name?: string; email?: string };
 
@@ -40,6 +41,12 @@ const boardService = new BoardService(repository, {
     });
   }
 });
+const usageFile =
+  process.env.USAGE_DATA_FILE ||
+  (process.env.BOARD_DATA_FILE
+    ? join(pathDirname(process.env.BOARD_DATA_FILE), 'usage.json')
+    : join(process.cwd(), 'data', 'usage.json'));
+const usageLogger = new UsageLogger(usageFile);
 
 const staticCandidates = [
   process.env.STATIC_DIR,
@@ -170,6 +177,29 @@ function pkceChallenge(verifier: string): string {
   return hash.toString('base64url');
 }
 
+const deriveActionType = (pathname: string): string => {
+  if (pathname.startsWith('/api/')) return 'api';
+  if (pathname === '/events') return 'event-stream';
+  return 'page';
+};
+
+async function logUsage(req: any, url: URL, userId?: string) {
+  try {
+    await usageLogger.record({
+      timestamp: new Date().toISOString(),
+      actionType: deriveActionType(url.pathname),
+      action: `${req.method} ${url.pathname}`,
+      userId,
+      referrer:
+        (req.headers['referer'] as string | undefined) ||
+        (req.headers['referrer'] as string | undefined),
+      userAgent: req.headers['user-agent']
+    });
+  } catch (err) {
+    console.error('Failed to record usage event', err);
+  }
+}
+
 async function authenticate(req: any, res: any): Promise<Session | undefined> {
   const cookies = req.headers.cookie ? parseCookie(req.headers.cookie) : {};
   const session = verifySession(cookies['session']);
@@ -297,7 +327,7 @@ async function handleCallback(req: any, res: any) {
   }
 }
 
-const server = createServer(async (req, res) => {
+export const requestHandler = async (req: any, res: any) => {
   try {
     if (!req.url || !req.method) {
       res.writeHead(400).end();
@@ -307,6 +337,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
 
     const session = await authenticate(req, res);
+    await logUsage(req, url, session?.sub);
     if (res.writableEnded) return;
     const authUser = session?.sub;
 
@@ -593,15 +624,18 @@ const server = createServer(async (req, res) => {
     res.writeHead(500);
     res.end('Internal server error');
   }
-});
+};
+
+export const server = createServer(requestHandler);
 
 const port = Number(process.env.PORT || 5173);
 
-server.listen(port, () => {
-  console.log(`Feedback server running at http://localhost:${port}`);
-});
-
-setInterval(() => hub.heartbeat(), 15000);
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(port, () => {
+    console.log(`Feedback server running at http://localhost:${port}`);
+  });
+  setInterval(() => hub.heartbeat(), 15000);
+}
 
 function isColumn(value: string): value is Column {
   return value === 'Todo' || value === 'In Progress' || value === 'Done' || value === 'Waste';
