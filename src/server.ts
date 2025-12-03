@@ -12,6 +12,7 @@ import {
   BoardService,
   Column,
   FileBoardRepository,
+  isColumn,
   sanitizeTitle,
   sanitizeText
 } from './board';
@@ -381,7 +382,7 @@ export const requestHandler = async (req: any, res: any) => {
       hub.subscribe(req, res, {
         initialMessage: {
           type: 'cardChanged',
-          cards: repository.load()
+          cards: boardService.listCards()
         },
         lastEventId: Number.isFinite(lastEventId) ? lastEventId : undefined
       });
@@ -460,6 +461,56 @@ export const requestHandler = async (req: any, res: any) => {
       }
       try {
         const card = boardService.moveCard(user, id, column);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/move-up') {
+      const body = await parseBody(req);
+      const id = body.id as string;
+      const user = authUser || body.user;
+      if (typeof id !== 'string') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      if (typeof user !== 'string' || user.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.moveCardUp(user, id);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/move-down') {
+      const body = await parseBody(req);
+      const id = body.id as string;
+      const user = authUser || body.user;
+      if (typeof id !== 'string') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      if (typeof user !== 'string' || user.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.moveCardDown(user, id);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(card));
       } catch (err: any) {
@@ -635,8 +686,4 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`Feedback server running at http://localhost:${port}`);
   });
   setInterval(() => hub.heartbeat(), 15000);
-}
-
-function isColumn(value: string): value is Column {
-  return value === 'Todo' || value === 'In Progress' || value === 'Done' || value === 'Waste';
 }

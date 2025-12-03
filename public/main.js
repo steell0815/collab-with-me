@@ -117,6 +117,36 @@ createButton.addEventListener('click', async () => {
 
 cardsEl.addEventListener('click', async (event) => {
   const target = event.target;
+  if (target.matches('button[data-move-up]')) {
+    const cardId = target.getAttribute('data-id');
+    const cardTitle = target.getAttribute('data-title') || '';
+    if (!currentUserId || !cardId) {
+      setStatus('Login required to move cards', true);
+      return;
+    }
+    try {
+      await moveCardUp(cardId);
+      setStatus(`Moved "${cardTitle}" up`);
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error moving card', true);
+    }
+  }
+  if (target.matches('button[data-move-down]')) {
+    const cardId = target.getAttribute('data-id');
+    const cardTitle = target.getAttribute('data-title') || '';
+    if (!currentUserId || !cardId) {
+      setStatus('Login required to move cards', true);
+      return;
+    }
+    try {
+      await moveCardDown(cardId);
+      setStatus(`Moved "${cardTitle}" down`);
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error moving card', true);
+    }
+  }
   if (target.matches('button[data-move]')) {
     const cardId = target.getAttribute('data-id');
     const cardTitle = target.getAttribute('data-title') || '';
@@ -350,6 +380,24 @@ const renderCards = (cards) => {
       const viewActions = document.createElement('div');
       viewActions.className = 'view-actions';
 
+      const moveUpBtn = document.createElement('button');
+      moveUpBtn.dataset.moveUp = 'true';
+      moveUpBtn.dataset.id = card.id;
+      moveUpBtn.dataset.title = card.title;
+      moveUpBtn.className = 'icon-btn';
+      moveUpBtn.title = 'Move up';
+      moveUpBtn.textContent = '↑';
+      viewActions.appendChild(moveUpBtn);
+
+      const moveDownBtn = document.createElement('button');
+      moveDownBtn.dataset.moveDown = 'true';
+      moveDownBtn.dataset.id = card.id;
+      moveDownBtn.dataset.title = card.title;
+      moveDownBtn.className = 'icon-btn';
+      moveDownBtn.title = 'Move down';
+      moveDownBtn.textContent = '↓';
+      viewActions.appendChild(moveDownBtn);
+
       const expandToggle = document.createElement('button');
       expandToggle.dataset.expandToggle = 'true';
       expandToggle.dataset.cardId = card.id;
@@ -454,5 +502,27 @@ async function moveCard(cardId, column) {
     await fetchCards();
   } catch (err) {
     setStatus(err.message || 'Error moving card', true);
+  }
+}
+
+async function moveCardUp(cardId) {
+  const res = await fetch('/api/cards/move-up', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user: currentUserId, id: cardId })
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+}
+
+async function moveCardDown(cardId) {
+  const res = await fetch('/api/cards/move-down', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user: currentUserId, id: cardId })
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
   }
 }

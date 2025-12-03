@@ -79,6 +79,15 @@ export const given = {
       throw new Error('No authenticated user in context');
     }
     ctx.service.createCard(ctx.currentUser, { title, column, text, expanded });
+  },
+  swimlaneShowsCardInOrder: ({
+    column,
+    titles
+  }: {
+    column: Column;
+    titles: string[];
+  }) => {
+    then.swimlaneShowsCardInOrder({ column, titles });
   }
 };
 
@@ -176,6 +185,56 @@ export const when = {
     }
     const id = resolveId(title);
     ctx.service.deleteCard(actor, id);
+  },
+  userMovesCardUp: ({ title, column }: { title: string; column: Column }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    if (!ctx.authenticatedUsers.has(actor)) {
+      throw new Error(`User ${actor} not authenticated`);
+    }
+    const id = resolveId(title);
+    const card = ctx.service.listCards().find((c) => c.id === id);
+    if (!card || card.column !== column) {
+      throw new Error(`Card ${title} not in column ${column}`);
+    }
+    ctx.service.moveCardUp(actor, id);
+  },
+  userMovesCardDown: ({ title, column }: { title: string; column: Column }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    if (!ctx.authenticatedUsers.has(actor)) {
+      throw new Error(`User ${actor} not authenticated`);
+    }
+    const id = resolveId(title);
+    const card = ctx.service.listCards().find((c) => c.id === id);
+    if (!card || card.column !== column) {
+      throw new Error(`Card ${title} not in column ${column}`);
+    }
+    ctx.service.moveCardDown(actor, id);
+  },
+  userMovesCardToSwimlane: ({
+    title,
+    column
+  }: {
+    title: string;
+    column: Column;
+  }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    if (!ctx.authenticatedUsers.has(actor)) {
+      throw new Error(`User ${actor} not authenticated`);
+    }
+    const id = resolveId(title);
+    ctx.service.moveCardToSwimlane(actor, id, column);
   }
 };
 
@@ -214,6 +273,17 @@ export const then = {
     );
     expect(found).toBeDefined();
   },
+  swimlaneShowsCardInOrder: ({
+    column,
+    titles
+  }: {
+    column: Column;
+    titles: string[];
+  }) => {
+    const ctx = ensureContext();
+    const cards = ctx.service.listCards().filter((card) => card.column === column);
+    expect(cards.map((card) => card.title)).toEqual(titles);
+  },
   boardShowSwimlane: ({ title, column }: { title: string; column: Column }) => {
     expect(SWIMLANES).toContain(column);
     const expectedTitle = column === 'In Progress' ? 'In Progress' : column;
@@ -227,7 +297,7 @@ export const then = {
   changeIsPersisted: () => {
     const ctx = ensureContext();
     const persisted = ctx.repository.load();
-    expect(persisted).toBeDefined();
+    expect(persisted.cards.length).toBeGreaterThan(0);
   }
 };
 
