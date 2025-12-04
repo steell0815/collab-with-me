@@ -470,6 +470,68 @@ export const requestHandler = async (req: any, res: any) => {
       return;
     }
 
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/register') {
+      const body = await parseBody(req);
+      const id = body.id as string;
+      const userId = authUser || (typeof body.user === 'string' ? body.user : undefined);
+      const userDisplay =
+        session?.name ||
+        session?.email ||
+        session?.sub ||
+        (typeof body.display === 'string' ? body.display : typeof body.user === 'string' ? body.user : '');
+      const aliases = [typeof body.user === 'string' ? body.user : ''].filter((v) => !!v && v !== userId);
+      if (typeof id !== 'string') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      if (typeof userId !== 'string' || userId.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.register(userId, id, aliases, userDisplay || userId);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/cards/unregister') {
+      const body = await parseBody(req);
+      const id = body.id as string;
+      const userId = authUser || (typeof body.user === 'string' ? body.user : undefined);
+      const userDisplay =
+        session?.name ||
+        session?.email ||
+        session?.sub ||
+        (typeof body.display === 'string' ? body.display : typeof body.user === 'string' ? body.user : '');
+      const aliases = [typeof body.user === 'string' ? body.user : ''].filter((v) => !!v && v !== userId);
+      if (typeof id !== 'string') {
+        res.writeHead(400);
+        res.end('Invalid payload');
+        return;
+      }
+      if (typeof userId !== 'string' || userId.trim() === '') {
+        res.writeHead(401);
+        res.end('User required');
+        return;
+      }
+      try {
+        const card = boardService.unregister(userId, id, aliases, userDisplay || userId);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(card));
+      } catch (err: any) {
+        res.writeHead(404);
+        res.end(err?.message || 'Card not found');
+      }
+      return;
+    }
+
     if (req.method === 'PATCH' && url.pathname === '/api/cards/move-up') {
       const body = await parseBody(req);
       const id = body.id as string;

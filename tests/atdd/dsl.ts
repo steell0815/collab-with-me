@@ -67,18 +67,21 @@ export const given = {
     title,
     column,
     text,
-    expanded
+    expanded,
+    registrars
   }: {
     title: string;
     column: Column;
     text?: string;
     expanded?: boolean;
+    registrars?: string[];
   }) => {
     const ctx = ensureContext();
     if (!ctx.currentUser) {
       throw new Error('No authenticated user in context');
     }
-    ctx.service.createCard(ctx.currentUser, { title, column, text, expanded });
+    const card = ctx.service.createCard(ctx.currentUser, { title, column, text, expanded });
+    (registrars ?? []).forEach((userId) => ctx.service.register(userId, card.id));
   },
   swimlaneShowsCardInOrder: ({
     column,
@@ -235,6 +238,30 @@ export const when = {
     }
     const id = resolveId(title);
     ctx.service.moveCardToSwimlane(actor, id, column);
+  },
+  userRegistersToCard: ({ title }: { title: string }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    if (!ctx.authenticatedUsers.has(actor)) {
+      throw new Error(`User ${actor} not authenticated`);
+    }
+    const id = resolveId(title);
+    ctx.service.register(actor, id);
+  },
+  userUnregistersFromCard: ({ title }: { title: string }) => {
+    const ctx = ensureContext();
+    const actor = ctx.currentUser;
+    if (!actor) {
+      throw new Error('No authenticated user in context');
+    }
+    if (!ctx.authenticatedUsers.has(actor)) {
+      throw new Error(`User ${actor} not authenticated`);
+    }
+    const id = resolveId(title);
+    ctx.service.unregister(actor, id);
   }
 };
 
@@ -298,6 +325,18 @@ export const then = {
     const ctx = ensureContext();
     const persisted = ctx.repository.load();
     expect(persisted.cards.length).toBeGreaterThan(0);
+  },
+  cardHasRegistrars: ({
+    title,
+    registrars
+  }: {
+    title: string;
+    registrars: string[];
+  }) => {
+    const ctx = ensureContext();
+    const card = ctx.service.listCards().find((c) => c.title === title);
+    expect(card).toBeDefined();
+    expect((card as any).registrars ?? []).toEqual(registrars);
   }
 };
 

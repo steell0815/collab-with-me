@@ -1,3 +1,5 @@
+import { isRegistered } from './registrarHelpers.js';
+
 const cardsEl = document.querySelector('#cards');
 const statusEl = document.querySelector('#status');
 const titleEl = document.querySelector('#title');
@@ -81,11 +83,11 @@ const connectEvents = () => {
 };
 
 createButton.addEventListener('click', async () => {
-  const title = titleEl.value.trim();
-  const text = textEl.value;
-  const column = columnEl.value;
-  if (!currentUserId) {
-    setStatus('Login required to create cards', true);
+      const title = titleEl.value.trim();
+      const text = textEl.value;
+      const column = columnEl.value;
+      if (!currentUserId) {
+        setStatus('Login required to create cards', true);
     return;
   }
   if (!title) {
@@ -117,6 +119,36 @@ createButton.addEventListener('click', async () => {
 
 cardsEl.addEventListener('click', async (event) => {
   const target = event.target;
+  if (target.matches('button[data-register]')) {
+    const cardId = target.getAttribute('data-id');
+    const cardTitle = target.getAttribute('data-title') || '';
+    if (!currentUserId || !cardId) {
+      setStatus('Login required to register', true);
+      return;
+    }
+    try {
+      await registerForCard(cardId);
+      setStatus(`Registered for "${cardTitle}"`);
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error registering', true);
+    }
+  }
+  if (target.matches('button[data-unregister]')) {
+    const cardId = target.getAttribute('data-id');
+    const cardTitle = target.getAttribute('data-title') || '';
+    if (!currentUserId || !cardId) {
+      setStatus('Login required to unregister', true);
+      return;
+    }
+    try {
+      await unregisterFromCard(cardId);
+      setStatus(`Unregistered from "${cardTitle}"`);
+      await fetchCards();
+    } catch (err) {
+      setStatus(err.message || 'Error unregistering', true);
+    }
+  }
   if (target.matches('button[data-move-up]')) {
     const cardId = target.getAttribute('data-id');
     const cardTitle = target.getAttribute('data-title') || '';
@@ -329,11 +361,14 @@ const renderCards = (cards) => {
 
       const titleEl = document.createElement('strong');
       titleEl.textContent = card.title;
-      div.appendChild(titleEl);
 
       const userEl = document.createElement('small');
-      userEl.textContent = card.createdBy;
-      div.appendChild(userEl);
+      userEl.textContent = `Creator: ${card.createdBy}`;
+
+      const registrarsEl = document.createElement('small');
+      const registrars = Array.isArray(card.registrars) ? card.registrars : [];
+      registrarsEl.textContent =
+        registrars.length > 0 ? `Registrars: ${registrars.join(', ')}` : 'Registrars: -';
 
       const actions = document.createElement('div');
       actions.className = 'actions';
@@ -371,6 +406,7 @@ const renderCards = (cards) => {
       viewBlock.className = 'view-block';
       viewBlock.appendChild(titleEl);
       viewBlock.appendChild(userEl);
+      viewBlock.appendChild(registrarsEl);
       if (card.text && card.expanded) {
         const textElView = document.createElement('p');
         textElView.textContent = card.text;
@@ -379,6 +415,22 @@ const renderCards = (cards) => {
       }
       const viewActions = document.createElement('div');
       viewActions.className = 'view-actions';
+
+      const isRegisteredToCard = isRegistered(card, currentUserId, currentUserDisplay);
+      const registerBtn = document.createElement('button');
+      registerBtn.className = 'icon-btn';
+      registerBtn.dataset.id = card.id;
+      registerBtn.dataset.title = card.title;
+      if (isRegisteredToCard) {
+        registerBtn.dataset.unregister = 'true';
+        registerBtn.title = 'Unregister from card';
+        registerBtn.textContent = '🚫';
+      } else {
+        registerBtn.dataset.register = 'true';
+        registerBtn.title = 'Register to card';
+        registerBtn.textContent = '🙋';
+      }
+      viewActions.appendChild(registerBtn);
 
       const moveUpBtn = document.createElement('button');
       moveUpBtn.dataset.moveUp = 'true';
@@ -521,6 +573,36 @@ async function moveCardDown(cardId) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user: currentUserId, id: cardId })
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+}
+
+async function registerForCard(cardId) {
+  const res = await fetch('/api/cards/register', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user: currentUserId,
+      display: currentUserDisplay || currentUserId,
+      id: cardId
+    })
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+}
+
+async function unregisterFromCard(cardId) {
+  const res = await fetch('/api/cards/unregister', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user: currentUserId,
+      display: currentUserDisplay || currentUserId,
+      id: cardId
+    })
   });
   if (!res.ok) {
     throw new Error(await res.text());

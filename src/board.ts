@@ -19,9 +19,14 @@ export interface BoardRepository {
 
 export type SwimlaneOrdering = Record<Column, string[]>;
 
+export type Registrar = { id: string; display: string };
+
+export type RegistrarStore = Record<string, Registrar[]>;
+
 export type BoardState = {
   cards: Card[];
   swimlanes: SwimlaneOrdering;
+  registrars: RegistrarStore;
 };
 
 export class FileBoardRepository implements BoardRepository {
@@ -35,7 +40,8 @@ export class FileBoardRepository implements BoardRepository {
     } catch {
       return {
         cards: [],
-        swimlanes: emptySwimlanes()
+        swimlanes: emptySwimlanes(),
+        registrars: {}
       };
     }
   }
@@ -60,20 +66,23 @@ export class NoopBoardNotifier implements BoardNotifier {
 export class InMemoryBoardRepository implements BoardRepository {
   private state: BoardState = {
     cards: [],
-    swimlanes: emptySwimlanes()
+    swimlanes: emptySwimlanes(),
+    registrars: {}
   };
 
   load(): BoardState {
     return {
       cards: [...this.state.cards],
-      swimlanes: cloneSwimlanes(this.state.swimlanes)
+      swimlanes: cloneSwimlanes(this.state.swimlanes),
+      registrars: cloneRegistrars(this.state.registrars)
     };
   }
 
   save(state: BoardState): void {
     this.state = {
       cards: [...state.cards],
-      swimlanes: cloneSwimlanes(state.swimlanes)
+      swimlanes: cloneSwimlanes(state.swimlanes),
+      registrars: cloneRegistrars(state.registrars)
     };
   }
 }
@@ -102,6 +111,7 @@ export class BoardService {
     };
     cards.push(card);
     placeOnTop(state.swimlanes, card.column, card.id);
+    state.registrars[card.id] = [...(state.registrars[card.id] ?? [])];
     this.repository.save(state);
     this.notifier.notifyBoardUpdated(userId, this.listCardsFromState(state));
     return card;
@@ -194,11 +204,12 @@ export class BoardService {
     }
     state.cards = next;
     removeFromSwimlanes(state.swimlanes, id);
+    delete state.registrars[id];
     this.repository.save(state);
     this.notifier.notifyBoardUpdated(userId, this.listCardsFromState(state));
   }
 
-  listCards(): Card[] {
+  listCards(): CardWithRegistrars[] {
     const state = this.repository.load();
     return this.listCardsFromState(state);
   }
@@ -247,21 +258,81 @@ export class BoardService {
     return `card-${existingCount + 1}-${unique}`;
   }
 
-  private listCardsFromState(state: BoardState): Card[] {
+  register(userId: string, id: string, aliases: string[] = [], displayName?: string): CardWithRegistrars {
+    if (!userId) {
+      throw new Error('User must be authenticated to register');
+    }
+    const state = this.repository.load();
+    const card = findCardOrThrow(state.cards, id);
+    const keys = dedupeList([userId, ...(displayName ? [displayName] : []), ...aliases]);
+    const existing = normalizeRegistrarList(state.registrars[id] ?? []);
+    const filtered = existing.filter((r) => !keys.includes(r.id) && !keys.includes(r.display));
+    const registrars: Registrar[] = [
+      ...filtered,
+      { id: userId, display: displayName || userId }
+    ];
+    state.registrars[id] = registrars;
+    this.repository.save(state);
+    this.notifier.notifyBoardUpdated(userId, this.listCardsFromState(state));
+    const normalized = normalizeRegistrarList(registrars);
+    state.registrars[id] = normalized;
+    return {
+      ...card,
+      registrars: normalized.map((r) => r.display),
+      registrarIds: normalized.map((r) => r.id)
+    };
+  }
+
+  unregister(userId: string, id: string, aliases: string[] = [], displayName?: string): CardWithRegistrars {
+    if (!userId) {
+      throw new Error('User must be authenticated to unregister');
+    }
+    const state = this.repository.load();
+    const card = findCardOrThrow(state.cards, id);
+    const keys = dedupeList([userId, ...(displayName ? [displayName] : []), ...aliases]);
+    const registrars = normalizeRegistrarList(state.registrars[id] ?? []).filter(
+      (r) => !keys.includes(r.id) && !keys.includes(r.display)
+    );
+    state.registrars[id] = registrars;
+    this.repository.save(state);
+    this.notifier.notifyBoardUpdated(userId, this.listCardsFromState(state));
+    const normalized = normalizeRegistrarList(registrars);
+    state.registrars[id] = normalized;
+    return {
+      ...card,
+      registrars: normalized.map((r) => r.display),
+      registrarIds: normalized.map((r) => r.id)
+    };
+  }
+
+  private listCardsFromState(state: BoardState): CardWithRegistrars[] {
     const map = new Map(state.cards.map((c) => [c.id, c]));
-    const ordered: Card[] = [];
+    const ordered: CardWithRegistrars[] = [];
     for (const column of SWIMLANES) {
       const lane = state.swimlanes[column] ?? [];
       for (const id of lane) {
         const card = map.get(id);
         if (card && card.column === column) {
-          ordered.push(card);
+          const registrars = normalizeRegistrarList(state.registrars[id] ?? []);
+          ordered.push({
+            ...card,
+            registrars: registrars.map((r) => r.display),
+            registrarIds: registrars.map((r) => r.id)
+          });
           map.delete(id);
         }
       }
     }
     if (map.size > 0) {
-      ordered.push(...[...map.values()].sort((a, b) => a.id.localeCompare(b.id)));
+      ordered.push(
+        ...[...map.values()]
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .map((card) => ({
+            ...card,
+            registrars: normalizeRegistrarList(state.registrars[card.id] ?? []).map((r) => r.display),
+            registrarIds: normalizeRegistrarList(state.registrars[card.id] ?? []).map((r) => r.id)
+          }))
+      );
     }
     return ordered;
   }
@@ -309,16 +380,18 @@ function normalizeBoardState(raw: unknown): BoardState {
     const cards = raw as Card[];
     return {
       cards,
-      swimlanes: deriveSwimlanes(cards)
+      swimlanes: deriveSwimlanes(cards),
+      registrars: {}
     };
   }
   if (raw && typeof raw === 'object') {
     const obj = raw as Partial<BoardState>;
     const cards = Array.isArray(obj.cards) ? (obj.cards as Card[]) : [];
     const swimlanes = normalizeSwimlanes(obj.swimlanes, cards);
-    return { cards, swimlanes };
+    const registrars = normalizeRegistrars(obj.registrars, cards);
+    return { cards, swimlanes, registrars };
   }
-  return { cards: [], swimlanes: emptySwimlanes() };
+  return { cards: [], swimlanes: emptySwimlanes(), registrars: {} };
 }
 
 function normalizeSwimlanes(swimlanes: SwimlaneOrdering | undefined, cards: Card[]): SwimlaneOrdering {
@@ -343,6 +416,31 @@ function normalizeSwimlanes(swimlanes: SwimlaneOrdering | undefined, cards: Card
     }
   }
   return normalized;
+}
+
+function normalizeRegistrars(registrars: RegistrarStore | undefined, cards: Card[]): RegistrarStore {
+  const map: RegistrarStore = {};
+  const cardIds = new Set(cards.map((c) => c.id));
+  if (registrars && typeof registrars === 'object') {
+    for (const [cardId, users] of Object.entries(registrars)) {
+      if (!cardIds.has(cardId)) continue;
+      if (!Array.isArray(users)) continue;
+      const normalized = users
+        .map((u) =>
+          typeof u === 'string'
+            ? ({ id: u, display: u } as Registrar)
+            : typeof u === 'object' && u
+              ? ({
+                  id: typeof (u as any).id === 'string' ? (u as any).id : '',
+                  display: typeof (u as any).display === 'string' ? (u as any).display : ''
+                } as Registrar)
+              : null
+        )
+        .filter((u): u is Registrar => !!u && !!u.id);
+      map[cardId] = dedupeRegistrars(normalized);
+    }
+  }
+  return map;
 }
 
 function deriveSwimlanes(cards: Card[]): SwimlaneOrdering {
@@ -406,4 +504,42 @@ function cloneSwimlanes(swimlanes: SwimlaneOrdering): SwimlaneOrdering {
     Done: [...swimlanes.Done],
     Waste: [...swimlanes.Waste]
   };
+}
+
+function cloneRegistrars(registrars: RegistrarStore): RegistrarStore {
+  return Object.fromEntries(
+    Object.entries(registrars).map(([id, users]) => [id, users.map((u) => ({ ...u }))])
+  );
+}
+
+function dedupeList(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const val of values) {
+    if (!val || seen.has(val)) continue;
+    seen.add(val);
+    result.push(val);
+  }
+  return result;
+}
+
+export type CardWithRegistrars = Card & { registrars: string[]; registrarIds: string[] };
+
+function normalizeRegistrarList(list: Registrar[]): Registrar[] {
+  const normalized: Registrar[] = [];
+  const seen = new Set<string>();
+  for (const entry of list) {
+    if (!entry || typeof entry.id !== 'string') continue;
+    const id = entry.id;
+    const display = entry.display || id;
+    const key = id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push({ id, display });
+  }
+  return normalized;
+}
+
+function dedupeRegistrars(list: Registrar[]): Registrar[] {
+  return normalizeRegistrarList(list);
 }
